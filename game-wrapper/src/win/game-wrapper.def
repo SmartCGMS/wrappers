@@ -1,0 +1,6 @@
+LIBRARY game-wrapper.dll
+
+EXPORTS
+	scgms_game_create
+	scgms_game_step
+	scgms_game_terminate
