@@ -86,9 +86,17 @@ class CGame_Wrapper : public virtual scgms::IFilter, public virtual refcnt::CNot
 		// current patient state
 		CPatient_Sensor_State mState;
 
+		// stored config ID
+		GUID mConfig_GUID;
+		// stored parameters ID
+		GUID mParameters_GUID;
+
 	protected:
 		// inject given event to current execution
 		HRESULT Inject_Event(scgms::UDevice_Event &&event);
+
+		// inject config and params GUID event
+		bool Inject_Configuration_Info();
 
 	public:
 		CGame_Wrapper(uint32_t stepping_ms);
@@ -99,9 +107,7 @@ class CGame_Wrapper : public virtual scgms::IFilter, public virtual refcnt::CNot
 		bool Step(bool initial = false);
 		void Terminate(const BOOL wait_for_shutdown);
 
-		bool Inject_Bolus(double level);
-		bool Inject_Basal_Rate(double level);
-		bool Inject_CHO(double level, bool rescue);
+		bool Inject_Level(GUID* signal_id, double level, double relative_step_time);
 
 		const CPatient_Sensor_State& Get_State() const;
 
@@ -139,12 +145,10 @@ extern "C" scgms_game_wrapper_t IfaceCalling scgms_game_create(uint16_t config_c
  *
  * Parameters:
  *		wrapper - pointer to a game wrapper instance obtained from scgms_game_create call
- *		boluses - an array of boluses to be dosed [U]
- *		bolus_cnt - length of the bolus array
- *		carbohydrates - an array of carbohydrates to be dosed [g]
- *		cho_rescue_flags - an array of flags indicating the "rescue" CHO type (FALSE (zero) for regular CHO, TRUE (non-zero) for rescue CHO)
- *		carbohydrates_cnt - length of carbohydrates and cho_rescue_flags array
- *		basal_insulin_setting - setting of basal insulin rate - quiet_NaN indicating "do not change", zero for turning the virtual pump off, otherwise accepts positive values only
+ *		input_signal_ids - array of signal GUIDs
+ *		input_signal_levels - array of levels
+ *		input_signal_times - array of times; times are a relative factor of step, range <0;1)
+ *		input_signal_count - count of input signal arrays (input_signal_ids, input_signal_levels, input_signal_times)
  *		bg - output variable for blood glucose reading [mmol/L]
  *		ig - output variable for interstitial glucose reading [mmol/L]
  *		iob - output variable for current model insulin on board [U]
@@ -154,7 +158,7 @@ extern "C" scgms_game_wrapper_t IfaceCalling scgms_game_create(uint16_t config_c
  *		TRUE (non-zero) - success
  *		FALSE (zero) - failure - parameters are invalid or the attempt to step the model has failed
  */
-extern "C" BOOL IfaceCalling scgms_game_step(scgms_game_wrapper_t wrapper, double *boluses, uint32_t bolus_cnt, double *carbohydrates, uint8_t *cho_rescue_flags, uint32_t carbohydrates_cnt, double basal_insulin_setting, double* bg, double* ig, double* iob, double* cob);
+extern "C" BOOL IfaceCalling scgms_game_step(scgms_game_wrapper_t wrapper, GUID* input_signal_ids, double* input_signal_levels, double* input_signal_times, uint32_t input_signal_count, double* bg, double* ig, double* iob, double* cob);
 
 /*
  * scgms_game_terminate

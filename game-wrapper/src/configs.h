@@ -39,5 +39,10 @@
 #pragma once
 
 #include <string>
+#include <cstdint>
+#include "../../../common/rtl/guid.h"
 
-extern std::string Get_Config(uint32_t patientClass, uint32_t patientId, double stepping, const std::string& logTarget);
+extern const GUID& Get_Config_Base_GUID(uint32_t configClass, uint32_t configId);
+extern const GUID& Get_Config_Parameters_GUID(uint32_t configClass, uint32_t configId);
+
+extern std::string Get_Config(const GUID& base_id, const GUID& parameters_id, double stepping, const std::string& logTarget);

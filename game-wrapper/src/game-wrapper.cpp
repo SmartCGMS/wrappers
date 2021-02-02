@@ -55,7 +55,10 @@ CGame_Wrapper::~CGame_Wrapper()
 
 bool CGame_Wrapper::Load_Configuration(uint16_t config_class, uint16_t config_id, const std::string& log_file_path)
 {
-	mConfig_Contents = Get_Config(config_class, config_id, mStep_Size, log_file_path);
+	mConfig_GUID = Get_Config_Base_GUID(config_class, config_id);
+	mParameters_GUID = Get_Config_Parameters_GUID(config_class, config_id);
+
+	mConfig_Contents = Get_Config(mConfig_GUID, mParameters_GUID, mStep_Size, log_file_path);
 
 	return !mConfig_Contents.empty();
 }
@@ -73,6 +76,9 @@ bool CGame_Wrapper::Execute_Configuration()
 
 	mCurrent_Time = Unix_Time_To_Rat_Time(time(nullptr)); // at least preserve the initial timestamp (any further timestamps do not correspond to real-time)
 	mSegment_Id = 1;
+
+	if (mExecutor)
+		Inject_Configuration_Info();
 
 	return mExecutor.operator bool();
 }
@@ -104,6 +110,21 @@ HRESULT IfaceCalling CGame_Wrapper::Execute(scgms::IDevice_Event *event)
 	return S_OK;
 }
 
+bool CGame_Wrapper::Inject_Configuration_Info()
+{
+	std::unique_lock<std::mutex> lck(mExecution_Mtx);
+
+	std::wstring infoContents = L"Config_ID=" + GUID_To_WString(mConfig_GUID) + L",Parameters_ID=" + GUID_To_WString(mParameters_GUID);
+
+	scgms::UDevice_Event evt{ scgms::NDevice_Event_Code::Information };
+	evt.device_id() = game_wrapper_id;
+	evt.device_time() = mCurrent_Time;
+	evt.segment_id() = mSegment_Id;
+	evt.info.set(infoContents.c_str());
+
+	return Succeeded(Inject_Event(std::move(evt)));
+}
+
 HRESULT CGame_Wrapper::Inject_Event(scgms::UDevice_Event &&event)
 {
 	if (!event)
@@ -133,45 +154,15 @@ bool CGame_Wrapper::Step(bool initial)
 	return Succeeded(Inject_Event(std::move(evt)));
 }
 
-bool CGame_Wrapper::Inject_Bolus(double level)
+bool CGame_Wrapper::Inject_Level(GUID* signal_id, double level, double relative_step_time)
 {
 	std::unique_lock<std::mutex> lck(mExecution_Mtx);
 
 	scgms::UDevice_Event evt{ scgms::NDevice_Event_Code::Level };
 
 	evt.level() = level;
-	evt.device_time() = mCurrent_Time;
-	evt.signal_id() = scgms::signal_Requested_Insulin_Bolus;
-	evt.segment_id() = mSegment_Id;
-	evt.device_id() = game_wrapper_id;
-
-	return Succeeded(Inject_Event(std::move(evt)));
-}
-
-bool CGame_Wrapper::Inject_Basal_Rate(double level)
-{
-	std::unique_lock<std::mutex> lck(mExecution_Mtx);
-
-	scgms::UDevice_Event evt{ scgms::NDevice_Event_Code::Level };
-
-	evt.level() = level;
-	evt.device_time() = mCurrent_Time;
-	evt.signal_id() = scgms::signal_Requested_Insulin_Basal_Rate;
-	evt.segment_id() = mSegment_Id;
-	evt.device_id() = game_wrapper_id;
-
-	return Succeeded(Inject_Event(std::move(evt)));
-}
-
-bool CGame_Wrapper::Inject_CHO(double level, bool rescue)
-{
-	std::unique_lock<std::mutex> lck(mExecution_Mtx);
-
-	scgms::UDevice_Event evt{ scgms::NDevice_Event_Code::Level };
-
-	evt.level() = level;
-	evt.device_time() = mCurrent_Time;
-	evt.signal_id() = rescue ? scgms::signal_Carb_Rescue : scgms::signal_Carb_Intake;
+	evt.device_time() = mCurrent_Time + mStep_Size * relative_step_time;
+	evt.signal_id() = *signal_id;
 	evt.segment_id() = mSegment_Id;
 	evt.device_id() = game_wrapper_id;
 
@@ -216,26 +207,17 @@ extern "C" scgms_game_wrapper_t IfaceCalling scgms_game_create(uint16_t config_c
 	return res;
 }
 
-extern "C" BOOL IfaceCalling scgms_game_step(scgms_game_wrapper_t wrapper_raw, double *boluses, uint32_t bolus_cnt, double *carbohydrates, uint8_t *cho_rescue_flag, uint32_t carbohydrates_cnt, double basal_insulin_setting, double* bg, double* ig, double* iob, double* cob)
+extern "C" BOOL IfaceCalling scgms_game_step(scgms_game_wrapper_t wrapper_raw, GUID* input_signal_ids, double* input_signal_levels, double* input_signal_times, uint32_t input_signal_count, double* bg, double* ig, double* iob, double* cob)
 {
 	CGame_Wrapper* wrapper = dynamic_cast<CGame_Wrapper*>(wrapper_raw);
 	if (!wrapper)
 		return FALSE;
 
-	uint32_t i;
-	bool success = true;
-
-	for (i = 0; i < bolus_cnt; i++)
-		success &= wrapper->Inject_Bolus(boluses[i]);
-
-	for (i = 0; i < carbohydrates_cnt; i++)
-		success &= wrapper->Inject_CHO(carbohydrates[i], (cho_rescue_flag[i] != 0));
-
-	if (std::isnan(basal_insulin_setting) && basal_insulin_setting > 0)
-		success &= wrapper->Inject_Basal_Rate(basal_insulin_setting);
-
-	if (!success)
-		return FALSE;
+	for (uint32_t i = 0; i < input_signal_count; i++)
+	{
+		if (!wrapper->Inject_Level(&input_signal_ids[i], input_signal_levels[i], input_signal_times[i]))
+			return FALSE;
+	}
 
 	if (!wrapper->Step())
 		return FALSE;

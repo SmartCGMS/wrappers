@@ -41,22 +41,28 @@
 
 #include <vector>
 #include <sstream>
+#include <map>
+#include <string>
 #include <string_view>
 
-const char* rsParams_Class_1_Id_1 = "0 0 0 20 20 0 0 0 0 0 0 0 20 10 30 10.2 0 1 0 0.2 0.05 0.4 0.005 0.005 100 0.01 0.005 0.001 0.01 0.05 0.001 0.05 0.0001 0.0001 0.002 0.05 1e-05 20 0.1 0.2 0.002 0.008 0.0001 0.0005 0.05 1 0.01 0.01 0.01 1 0 0 0 0 0 0 0 0 0 1 1 0 0 0 265.37 162.457 5.50433 0 100.25 100.25 3.20763 72.4342 141.154 265.37 102.32 138.56 100.25 0.08906 0.046122 0.003793 0.70391 0.21057 1.9152 0.054906 0.031319 253.52 0.087114 0.058138 0.027802 0.15446 0.225027 0.09001099999999999 0.23169 0.004637 0.00469 0.01208 0.9 0.0005 339 1 3.26673 0.0152 0.0766 0.0019 0.0078 1.23862 4.73141 0.05 0.05 0.05 10 0.95 0.12 0.4 0.3 0.08 0.02 0.05 30 0 15 15 500 500 500 500 500 50 300 200 300 200 500 500 500 250 300 200 0.8 1 0.5 2 2 10 2 0.5 500 0.6 0.2 0.2 0.9 1 1 1 0.05 0.02 0.5 3 0.01 1000 5 20 0.8 0.9 0.05 0.1 10 20 1 1 1 100 3 1 2 2 1 0.8 1 200 200 100 100";
+namespace patients
+{
+	static const GUID patient_s2013_1 = { 0x7e685b57, 0x8ef2, 0x4ce5, { 0x93, 0x8b, 0x7b, 0xdf, 0x2a, 0x88, 0x6c, 0x89 } }; // {7E685B57-8EF2-4CE5-938B-7BDF2A886C89}
+	const char* rsParams_s2013_1 = "0 0 0 20 20 0 0 0 0 0 0 0 20 10 30 10.2 0 1 0 0.2 0.05 0.4 0.005 0.005 100 0.01 0.005 0.001 0.01 0.05 0.001 0.05 0.0001 0.0001 0.002 0.05 1e-05 20 0.1 0.2 0.002 0.008 0.0001 0.0005 0.05 1 0.01 0.01 0.01 1 0 0 0 0 0 0 0 0 0 1 1 0 0 0 265.37 162.457 5.50433 0 100.25 100.25 3.20763 72.4342 141.154 265.37 102.32 138.56 100.25 0.08906 0.046122 0.003793 0.70391 0.21057 1.9152 0.054906 0.031319 253.52 0.087114 0.058138 0.027802 0.15446 0.225027 0.09001099999999999 0.23169 0.004637 0.00469 0.01208 0.9 0.0005 339 1 3.26673 0.0152 0.0766 0.0019 0.0078 1.23862 4.73141 0.05 0.05 0.05 10 0.95 0.12 0.4 0.3 0.08 0.02 0.05 30 0 15 15 500 500 500 500 500 50 300 200 300 200 500 500 500 250 300 200 0.8 1 0.5 2 2 10 2 0.5 500 0.6 0.2 0.2 0.9 1 1 1 0.05 0.02 0.5 3 0.01 1000 5 20 0.8 0.9 0.05 0.1 10 20 1 1 1 100 3 1 2 2 1 0.8 1 200 200 100 100";
 
-const std::vector<std::vector<const char*>> gPatients = {
-	// class 1
-	{ rsParams_Class_1_Id_1 }
-	// class 2
-	// ...
-};
+	const std::map<GUID, std::string> mapping = {
+		{ patient_s2013_1, rsParams_s2013_1 }
+	};
+}
 
-const char* rsPatient_Params_Placeholder = "{{PatientParameters}}";
-const char* rsPatient_Model_Stepping_Placeholder = "{{PatientStepping}}";
-const char* rsLog_File_Target_Placeholder = "{{LogFileTarget}}";
+namespace configs
+{
+	const char* rsPatient_Params_Placeholder = "{{PatientParameters}}";
+	const char* rsPatient_Model_Stepping_Placeholder = "{{PatientStepping}}";
+	const char* rsLog_File_Target_Placeholder = "{{LogFileTarget}}";
 
-const char* rsBase_Config = R"CONFIG(
+	static const GUID config_s2013_1 = { 0xca90e215, 0x2d10, 0x4879, { 0xb2, 0x4f, 0x31, 0x37, 0xc3, 0x6e, 0x59, 0xe2 } }; // {CA90E215-2D10-4879-B24F-3137C36E59E2}
+	const char* rsConfig_s2013_1 = R"CONFIG(
 ; Signal generator
 [Filter_001_{9EEB3451-2A9D-49C1-BA37-2EC0B00E5E6D}]
 Model = {B387A874-8D1E-460B-A5EC-BA36AB7516DE}
@@ -174,6 +180,12 @@ Signal_Dst_Id = {B74AA581-538C-4B30-B764-5BD0D97B0727}
 Log_File = {{LogFileTarget}}
 )CONFIG";
 
+	const std::map<GUID, std::string> mapping = {
+		{ config_s2013_1, rsConfig_s2013_1 }
+	};
+
+}
+
 bool Match_Replace_And_Advance(const char** itr, std::ostringstream& oss, const char* needle, const std::string& replaceWith)
 {
 	if (strncmp(*itr, needle, strlen(needle)) == 0)
@@ -187,15 +199,63 @@ bool Match_Replace_And_Advance(const char** itr, std::ostringstream& oss, const 
 	return false;
 }
 
-std::string Get_Config(uint32_t patientClass, uint32_t patientId, double stepping, const std::string& logTarget)
+const GUID& Get_Config_Base_GUID(uint32_t configClass, uint32_t configId)
 {
-	if (gPatients.size() <= patientClass || gPatients[patientClass].size() <= patientId)
+	switch (configClass)
+	{
+		case 1:		// Ikaros - S2013, easy
+		case 2:		// Ikaros - S2013, medium
+		case 3:		// Ikaros - S2013, hard
+			return configs::config_s2013_1;
+
+		// TODO: more Ikaros configs (S2017, Samadi, ...)
+	}
+
+	return Invalid_GUID;
+}
+
+const GUID& Get_Config_Parameters_GUID(uint32_t configClass, uint32_t configId)
+{
+	switch (configClass)
+	{
+		case 1:		// Ikaros - S2013, easy
+		{
+			switch (configId)
+			{
+				case 1:
+					return patients::patient_s2013_1;
+			}
+			break;
+		}
+		case 2:		// Ikaros - S2013, medium
+		{
+			// TODO
+			break;
+		}
+		case 3:		// Ikaros - S2013, hard
+		{
+			// TODO
+			break;
+		}
+	}
+
+	return Invalid_GUID;
+}
+
+std::string Get_Config(const GUID& base_id, const GUID& parameters_id, double stepping, const std::string& logTarget)
+{
+	auto conf_itr = configs::mapping.find(base_id);
+	if (conf_itr == configs::mapping.end())
 		return "";
 
-	const std::string& patientParams = gPatients[patientClass][patientId];
+	auto param_itr = patients::mapping.find(parameters_id);
+	if (param_itr == patients::mapping.end())
+		return "";
+
+	const std::string& patientParams = param_itr->second;
 	const std::string patientStepping = Narrow_WString(dbl_2_wstr(stepping));
 
-	const char* citr = rsBase_Config;
+	const char* citr = conf_itr->second.c_str();
 
 	std::ostringstream oss;
 
@@ -203,13 +263,13 @@ std::string Get_Config(uint32_t patientClass, uint32_t patientId, double steppin
 	{
 		if (*citr == '{' && *(citr + 1) == '{')
 		{
-			if (Match_Replace_And_Advance(&citr, oss, rsPatient_Params_Placeholder, patientParams))
+			if (Match_Replace_And_Advance(&citr, oss, configs::rsPatient_Params_Placeholder, patientParams))
 				continue;
 
-			if (Match_Replace_And_Advance(&citr, oss, rsLog_File_Target_Placeholder, logTarget))
+			if (Match_Replace_And_Advance(&citr, oss, configs::rsLog_File_Target_Placeholder, logTarget))
 				continue;
 
-			if (Match_Replace_And_Advance(&citr, oss, rsPatient_Model_Stepping_Placeholder, patientStepping))
+			if (Match_Replace_And_Advance(&citr, oss, configs::rsPatient_Model_Stepping_Placeholder, patientStepping))
 				continue;
 		}
 
