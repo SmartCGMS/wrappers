@@ -42,6 +42,11 @@
 #include "../../../common/utils/string_utils.h"
 #include "../../../common/rtl/rattime.h"
 
+#include <iostream>
+
+#undef min
+#undef max
+
 CGame_Wrapper::CGame_Wrapper(uint32_t stepping_ms)
 	: mStep_Size(scgms::One_Second * (static_cast<double>(stepping_ms)/1000.0))
 {
@@ -70,6 +75,16 @@ bool CGame_Wrapper::Execute_Configuration()
 	if (configuration->Load_From_Memory(mConfig_Contents.c_str(), mConfig_Contents.length(), mErrors.get()) == S_OK)
 	{
 		scgms::SFilter_Executor ex{ configuration, nullptr, nullptr, mErrors, this };
+
+		mErrors.for_each([](const std::wstring& err) {
+			std::wcerr << "Error: " << err << std::endl;
+		});
+
+
+		if (!ex) {
+			return false;
+		}
+
 		mExecutor.reset(ex.get(), [](scgms::IFilter_Executor* obj_to_release) { if (obj_to_release != nullptr) obj_to_release->Release(); });
 		ex.get()->AddRef();
 	}
@@ -160,6 +175,9 @@ bool CGame_Wrapper::Inject_Level(GUID* signal_id, double level, double relative_
 
 	scgms::UDevice_Event evt{ scgms::NDevice_Event_Code::Level };
 
+	// ensure non-negative time; negative times may result in rejection by the discrete model
+	relative_step_time = std::max(0.0, relative_step_time);
+
 	evt.level() = level;
 	evt.device_time() = mCurrent_Time + mStep_Size * relative_step_time;
 	evt.signal_id() = *signal_id;
@@ -213,9 +231,21 @@ extern "C" BOOL IfaceCalling scgms_game_step(scgms_game_wrapper_t wrapper_raw, G
 	if (!wrapper)
 		return FALSE;
 
+	// sort inputs by time, so the model gets stepped correctly
+	std::vector<size_t> input_indices(input_signal_count);
+	if (input_signal_count > 0) {
+		std::generate(input_indices.begin(), input_indices.end(), [n = 0]() mutable {
+			return n++;
+		});
+
+		std::sort(input_indices.begin(), input_indices.end(), [&input_signal_times](size_t a, size_t b) {
+			return input_signal_times[a] < input_signal_times[b];
+		});
+	}
+
 	for (uint32_t i = 0; i < input_signal_count; i++)
 	{
-		if (!wrapper->Inject_Level(&input_signal_ids[i], input_signal_levels[i], input_signal_times[i]))
+		if (!wrapper->Inject_Level(&input_signal_ids[input_indices[i]], input_signal_levels[input_indices[i]], input_signal_times[input_indices[i]]))
 			return FALSE;
 	}
 
