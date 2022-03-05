@@ -40,9 +40,24 @@
 
 #include <string>
 #include <cstdint>
+#include <functional>
 #include "../../../common/rtl/guid.h"
+
+enum class NConfig_Builder_Purpose
+{
+	Gameplay,
+	Optimalization,
+	Replay,
+};
+
+enum class NConfig_Meta
+{
+	None,
+	Param_Opt_Filter,
+};
 
 extern const GUID& Get_Config_Base_GUID(uint32_t configClass, uint32_t configId);
 extern const GUID& Get_Config_Parameters_GUID(uint32_t configClass, uint32_t configId);
 
-extern std::string Get_Config(const GUID& base_id, const GUID& parameters_id, double stepping, const std::string& logTarget);
+extern std::string Get_Replay_Config(const std::string& logFilenameIn);
+extern std::string Get_Config(const GUID& base_id, const GUID& parameters_id, double stepping, const std::string& logFilenameIn, const std::string& logFilenameOut, NConfig_Builder_Purpose purpose = NConfig_Builder_Purpose::Gameplay, std::function<void(size_t, NConfig_Meta, const std::string&)> metaCallback = {});

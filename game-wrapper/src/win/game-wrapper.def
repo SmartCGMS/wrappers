@@ -2,5 +2,12 @@ LIBRARY game-wrapper.dll
 
 EXPORTS
 	scgms_game_create
+	scgms_game_replay_create
 	scgms_game_step
+	scgms_game_replay_step
+	scgms_game_get_additional_state
 	scgms_game_terminate
+
+	scgms_game_optimize
+	scgms_game_get_optimize_status
+	scgms_game_optimizer_terminate

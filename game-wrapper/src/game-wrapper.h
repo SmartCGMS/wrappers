@@ -42,12 +42,16 @@
 #include "../../../common/rtl/FilterLib.h"
 #include "../../../common/rtl/scgmsLib.h"
 #include "../../../common/iface/referencedIface.h"
+#include "../../../common/iface/SolverIface.h"
+#include "../../../common/rtl/UILib.h"
+#include "../../../common/rtl/SolverLib.h"
 
 #include <cstdint>
 #include <cmath>
 #include <limits>
 #include <mutex>
 
+// wrapper for sensor state (exported element-wise through interface)
 struct CPatient_Sensor_State
 {
 	double bg = std::numeric_limits<double>::quiet_NaN();
@@ -86,10 +90,29 @@ class CGame_Wrapper : public virtual scgms::IFilter, public virtual refcnt::CNot
 		// current patient state
 		CPatient_Sensor_State mState;
 
+		// is this a replay run only?
+		bool mIs_Replay = false;
+
 		// stored config ID
 		GUID mConfig_GUID;
 		// stored parameters ID
 		GUID mParameters_GUID;
+
+		// is there a signal pending to be taken by outer code?
+		bool mPending_Signal = false;
+		// ID of pending signal
+		GUID mPending_Replay_Id = Invalid_GUID;
+		// level of pending signal
+		double mPending_Replay_Level = 0;
+		// time of pending signal
+		double mPending_Replay_Time = 0;
+
+		// mutex to synchronize replay with outer code stepping
+		std::mutex mReplay_Step_Mtx;
+		// conditional variable to notify waiters
+		std::condition_variable mReplay_Step_Cv;
+		// has the shut_down event come in replay variant?
+		bool mReplay_Ended = false;
 
 	protected:
 		// inject given event to current execution
@@ -102,21 +125,32 @@ class CGame_Wrapper : public virtual scgms::IFilter, public virtual refcnt::CNot
 		CGame_Wrapper(uint32_t stepping_ms);
 		virtual ~CGame_Wrapper();
 
+		// load regular gameplay configuration
 		bool Load_Configuration(uint16_t config_class, uint16_t config_id, const std::string& log_file_path);
+		// load replay configuration (just log replay filter)
+		bool Load_Replay_Configuration(const std::string& log_file_src_path);
+
+		// execute the configuration (create executor and start segments, ...); common for regular gameplay and for replays
 		bool Execute_Configuration();
+
+		// step the model; just for regular gameplay
 		bool Step(bool initial = false);
+		// step the replay; just for replays
+		bool Replay_Step(GUID& id, double& level, double& time);
+
+		// terminate the execution; common for regular gameplay and for replays
 		void Terminate(const BOOL wait_for_shutdown);
 
+		// inject level to the chain; valid for regular gameplay only
 		bool Inject_Level(GUID* signal_id, double level, double relative_step_time);
 
+		// retrieve the sensor state
 		const CPatient_Sensor_State& Get_State() const;
 
 		// scgms::IFilter iface
 		virtual HRESULT IfaceCalling Configure(scgms::IFilter_Configuration* configuration, refcnt::wstr_list *error_description);
 		virtual HRESULT IfaceCalling Execute(scgms::IDevice_Event *event);
 };
-
-#pragma warning( pop )
 
 // a type for interop-exportable pointer to CGame_Wrapper instance; the pointer should never be dereferenced in outer code as the CGame_Wrapper class is not designed to be interoperable
 using scgms_game_wrapper_t = CGame_Wrapper*;
@@ -159,6 +193,40 @@ extern "C" scgms_game_wrapper_t IfaceCalling scgms_game_create(uint16_t config_c
  *		FALSE (zero) - failure - parameters are invalid or the attempt to step the model has failed
  */
 extern "C" BOOL IfaceCalling scgms_game_step(scgms_game_wrapper_t wrapper, GUID* input_signal_ids, double* input_signal_levels, double* input_signal_times, uint32_t input_signal_count, double* bg, double* ig, double* iob, double* cob);
+
+/*
+ * scgms_game_replay_step
+ *
+ * Performs a single step during replay; retains a single event during it - this does not correspond to a time-based stepping, but rather level-based
+ *
+ * Parameters:
+ *		wrapper - pointer to a game wrapper instance obtained from scgms_game_replay_create call
+ *		signal_id - pointer to a memory, where the id of obtained signal is stored
+ *		level - pointer to a memory, where the signal level is stored
+ *		time - pointer to a memory, where the timestamp is stored
+ *
+ * Return values:
+ *		TRUE (non-zero) - success
+ *		FALSE (zero) - the simulation ended (no more events will come)
+ */
+extern "C" BOOL IfaceCalling scgms_game_replay_step(scgms_game_wrapper_t wrapper, GUID* signal_id, double* level, double* time);
+
+/*
+ * scgms_game_get_additional_state
+ *
+ * Retrieves an additional state info from the game wrapper; the game should be running (wrapper points to a valid object)
+ *
+ * Parameters:
+ *		wrapper - pointer to a game wrapper instance obtained from scgms_game_create call
+ *		requested_signal_ids - pointer to an array of requested signal IDs
+ *		output_signal_levels - a pointer to an array, which will be filled by requested signal levels
+ *		signal_count - count of requested signal IDs and the output array
+ *
+ * Return values:
+ *		TRUE (non-zero) - success
+ *		FALSE (zero) - failure - at least one of the requested state signals were not found
+ */
+extern "C" BOOL IfaceCalling scgms_game_get_additional_state(scgms_game_wrapper_t wrapper, GUID* requested_signal_ids, double* output_signal_levels, size_t signal_count);
 
 /*
  * scgms_game_terminate

@@ -48,7 +48,8 @@
 #undef max
 
 CGame_Wrapper::CGame_Wrapper(uint32_t stepping_ms)
-	: mStep_Size(scgms::One_Second * (static_cast<double>(stepping_ms)/1000.0))
+	: mStep_Size(scgms::One_Second* (static_cast<double>(stepping_ms) / 1000.0)), mConfig_GUID{ Invalid_GUID }, mCurrent_Time{ 0.0 }, mParameters_GUID{ Invalid_GUID },
+	mSegment_Id{ 1 }
 {
 	//
 }
@@ -60,10 +61,21 @@ CGame_Wrapper::~CGame_Wrapper()
 
 bool CGame_Wrapper::Load_Configuration(uint16_t config_class, uint16_t config_id, const std::string& log_file_path)
 {
+	mIs_Replay = false;
+
 	mConfig_GUID = Get_Config_Base_GUID(config_class, config_id);
 	mParameters_GUID = Get_Config_Parameters_GUID(config_class, config_id);
 
-	mConfig_Contents = Get_Config(mConfig_GUID, mParameters_GUID, mStep_Size, log_file_path);
+	mConfig_Contents = Get_Config(mConfig_GUID, mParameters_GUID, mStep_Size, log_file_path, log_file_path, NConfig_Builder_Purpose::Gameplay);
+
+	return !mConfig_Contents.empty();
+}
+
+bool CGame_Wrapper::Load_Replay_Configuration(const std::string& log_file_path)
+{
+	mIs_Replay = true;
+
+	mConfig_Contents = Get_Replay_Config(log_file_path);
 
 	return !mConfig_Contents.empty();
 }
@@ -89,11 +101,27 @@ bool CGame_Wrapper::Execute_Configuration()
 		ex.get()->AddRef();
 	}
 
+	if (!mExecutor)
+		return false;
+
 	mCurrent_Time = Unix_Time_To_Rat_Time(time(nullptr)); // at least preserve the initial timestamp (any further timestamps do not correspond to real-time)
 	mSegment_Id = 1;
 
-	if (mExecutor)
-		Inject_Configuration_Info();
+	// replays just gather all signals and terminate
+	if (mIs_Replay)
+		return true;
+
+	scgms::UDevice_Event evt{ scgms::NDevice_Event_Code::Time_Segment_Start };
+
+	evt.level() = 0.0;
+	evt.device_time() = mCurrent_Time;
+	evt.signal_id() = Invalid_GUID;
+	evt.segment_id() = mSegment_Id;
+	evt.device_id() = game_wrapper_id;
+
+	auto rc = Succeeded(Inject_Event(std::move(evt)));
+	if (!rc)
+		return false;
 
 	return mExecutor.operator bool();
 }
@@ -117,6 +145,30 @@ HRESULT IfaceCalling CGame_Wrapper::Execute(scgms::IDevice_Event *event)
 			mState.iob = evt.level();
 		else if (evt.signal_id() == scgms::signal_COB)
 			mState.cob = evt.level();
+	}
+
+	// on replay, store levels to be picked up by another thread
+	if (mIs_Replay && evt.event_code() == scgms::NDevice_Event_Code::Level)
+	{
+		std::unique_lock<std::mutex> lck(mReplay_Step_Mtx);
+
+		while (mPending_Signal && mExecutor)
+			mReplay_Step_Cv.wait(lck);
+
+		mPending_Signal = true;
+		mPending_Replay_Time = evt.device_time();
+		mPending_Replay_Level = evt.level();
+		mPending_Replay_Id = evt.signal_id();
+
+		mReplay_Step_Cv.notify_one();
+	}
+
+	if (mIs_Replay && evt.event_code() == scgms::NDevice_Event_Code::Shut_Down)
+	{
+		std::unique_lock<std::mutex> lck(mReplay_Step_Mtx);
+
+		mReplay_Ended = true;
+		mReplay_Step_Cv.notify_all();
 	}
 
 	// UDevice_Event destructor does this for us
@@ -169,6 +221,32 @@ bool CGame_Wrapper::Step(bool initial)
 	return Succeeded(Inject_Event(std::move(evt)));
 }
 
+bool CGame_Wrapper::Replay_Step(GUID& id, double& level, double& time)
+{
+	if (!mIs_Replay || !mExecutor || mReplay_Ended)
+		return false;
+
+	// lock scope
+	{
+		std::unique_lock<std::mutex> lck(mReplay_Step_Mtx);
+
+		while (!mPending_Signal && mExecutor && !mReplay_Ended)
+			mReplay_Step_Cv.wait(lck);
+
+		if (!mPending_Signal)
+			return false;
+
+		mPending_Signal = false;
+		time = mPending_Replay_Time;
+		level = mPending_Replay_Level;
+		id = mPending_Replay_Id;
+
+		mReplay_Step_Cv.notify_one();
+	}
+
+	return true;
+}
+
 bool CGame_Wrapper::Inject_Level(GUID* signal_id, double level, double relative_step_time)
 {
 	std::unique_lock<std::mutex> lck(mExecution_Mtx);
@@ -189,7 +267,27 @@ bool CGame_Wrapper::Inject_Level(GUID* signal_id, double level, double relative_
 
 void CGame_Wrapper::Terminate(const BOOL wait_for_shutdown)
 {
+	//Inject_Configuration_Info();
+	if (!mExecutor)
+		return;
+
+	bool rc = true;
+
 	std::unique_lock<std::mutex> lck(mExecution_Mtx);
+
+	if (!mIs_Replay)
+	{
+
+		scgms::UDevice_Event evt_stop{ scgms::NDevice_Event_Code::Time_Segment_Stop };
+
+		evt_stop.level() = 0.0;
+		evt_stop.device_time() = mCurrent_Time;
+		evt_stop.signal_id() = Invalid_GUID;
+		evt_stop.segment_id() = mSegment_Id;
+		evt_stop.device_id() = game_wrapper_id;
+
+		rc = Succeeded(Inject_Event(std::move(evt_stop)));
+	}
 
 	scgms::UDevice_Event evt{ scgms::NDevice_Event_Code::Shut_Down };
 
@@ -197,9 +295,11 @@ void CGame_Wrapper::Terminate(const BOOL wait_for_shutdown)
 	evt.segment_id() = mSegment_Id;
 	evt.device_id() = game_wrapper_id;
 
-	Inject_Event(std::move(evt));
+	rc &= Succeeded(Inject_Event(std::move(evt)));
 
 	mExecutor->Terminate(wait_for_shutdown);
+
+	mExecutor.reset();
 }
 
 const CPatient_Sensor_State& CGame_Wrapper::Get_State() const
@@ -219,6 +319,21 @@ extern "C" scgms_game_wrapper_t IfaceCalling scgms_game_create(uint16_t config_c
 
 	// make the first step, which initializes the model (and emits current state)
 	wrapper->Step(true);
+
+	auto res = wrapper.get();
+	wrapper.release();
+	return res;
+}
+
+extern "C" scgms_game_wrapper_t IfaceCalling scgms_game_replay_create(const char* log_file_path)
+{
+	std::unique_ptr<CGame_Wrapper> wrapper = std::make_unique<CGame_Wrapper>(0);
+
+	if (!wrapper->Load_Replay_Configuration(log_file_path))
+		return nullptr;
+
+	if (!wrapper->Execute_Configuration())
+		return nullptr;
 
 	auto res = wrapper.get();
 	wrapper.release();
@@ -263,6 +378,22 @@ extern "C" BOOL IfaceCalling scgms_game_step(scgms_game_wrapper_t wrapper_raw, G
 		*cob = state.cob;
 
 	return TRUE;
+}
+
+extern "C" BOOL IfaceCalling scgms_game_replay_step(scgms_game_wrapper_t wrapper_raw, GUID * signal_id, double* level, double* time)
+{
+	CGame_Wrapper* wrapper = dynamic_cast<CGame_Wrapper*>(wrapper_raw);
+	if (!wrapper)
+		return FALSE;
+
+	return wrapper->Replay_Step(*signal_id, *level, *time) ? TRUE : FALSE;
+}
+
+extern "C" BOOL IfaceCalling scgms_game_get_additional_state(scgms_game_wrapper_t wrapper, GUID * requested_signal_ids, double* output_signal_levels, size_t signal_count)
+{
+	// TODO
+
+	return FALSE;
 }
 
 extern "C" BOOL IfaceCalling scgms_game_terminate(scgms_game_wrapper_t wrapper_raw)
