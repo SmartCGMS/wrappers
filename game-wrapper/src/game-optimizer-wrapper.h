@@ -50,6 +50,7 @@
 #include <cmath>
 #include <limits>
 #include <mutex>
+#include <thread>
 
 // enumeration of optimalization states
 enum class NGame_Optimize_State : size_t
