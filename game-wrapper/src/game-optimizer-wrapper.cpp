@@ -48,9 +48,9 @@
 constexpr const GUID Default_Solver_Guid = { 0x1274b08, 0xf721, 0x42bc, { 0xa5, 0x62, 0x5, 0x56, 0x71, 0x4c, 0x56, 0x85 } };
 
 // default generation count; is scaled by degree of optimalization given by outside code
-constexpr const size_t Default_Generation_Count = 1000;
+constexpr const size_t Default_Generation_Count = 10000;
 // default population size; may differ later, when we have more elaborate models
-constexpr const size_t Default_Population_Size = 20;
+constexpr const size_t Default_Population_Size = 86;
 
 #undef min
 #undef max
