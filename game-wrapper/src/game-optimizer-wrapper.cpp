@@ -82,9 +82,9 @@ void CGame_Optimizer_Wrapper::Optimizer_Thread_Fnc()
 	std::wstring optParamName = Widen_String(mOpt_Filter_Parameters_Name);
 
 	// optimize parameters, block this until it's complete
+	const wchar_t* param_to_optimize_name = optParamName.c_str();
 	rc = scgms::Optimize_Parameters(configuration,
-		mOpt_Filter_Idx,
-		optParamName.c_str(),
+		&mOpt_Filter_Idx, &param_to_optimize_name, 1,
 		nullptr,
 		nullptr,
 		Default_Solver_Guid,
