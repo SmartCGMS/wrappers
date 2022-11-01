@@ -10,4 +10,5 @@ EXPORTS
 
 	scgms_game_optimize
 	scgms_game_get_optimize_status
+	scgms_game_cancel_optimize
 	scgms_game_optimizer_terminate

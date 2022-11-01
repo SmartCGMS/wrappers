@@ -45,7 +45,7 @@
 #include <iostream>
 
 // default solver: Halton MetaDE
-constexpr const GUID Default_Solver_Guid = { 0x1274b08, 0xf721, 0x42bc, { 0xa5, 0x62, 0x5, 0x56, 0x71, 0x4c, 0x56, 0x85 } };
+constexpr const GUID Default_Solver_Guid = { 0x1b21b62f, 0x7c6c, 0x4027,{ 0x89, 0xbc, 0x68, 0x7d, 0x8b, 0xd3, 0x2b, 0x3c } };	// {1B21B62F-7C6C-4027-89BC-687D8BD32B3C}
 
 // default generation count; is scaled by degree of optimalization given by outside code
 constexpr const size_t Default_Generation_Count = 1000;
@@ -81,10 +81,14 @@ void CGame_Optimizer_Wrapper::Optimizer_Thread_Fnc()
 
 	std::wstring optParamName = Widen_String(mOpt_Filter_Parameters_Name);
 
+	const size_t filter_indices = mOpt_Filter_Idx;
+	const wchar_t* parameters_configuration_names = optParamName.c_str();
+
 	// optimize parameters, block this until it's complete
 	rc = scgms::Optimize_Parameters(configuration,
-		mOpt_Filter_Idx,
-		optParamName.c_str(),
+		&filter_indices,
+		&parameters_configuration_names,
+		1,
 		nullptr,
 		nullptr,
 		Default_Solver_Guid,
@@ -236,6 +240,16 @@ bool CGame_Optimizer_Wrapper::Replay()
 	return true;
 }
 
+bool CGame_Optimizer_Wrapper::Request_Cancel()
+{
+	if (mOpt_State == NGame_Optimize_State::None)
+		return false;
+
+	mProgress.cancelled = TRUE;
+
+	return true;
+}
+
 extern "C" scgms_game_optimizer_wrapper_t IfaceCalling scgms_game_optimize(uint16_t config_class, uint16_t config_id, uint32_t stepping_ms, const char* log_file_input_path, const char* log_file_output_path, uint16_t degree_of_opt)
 {
 	std::unique_ptr<CGame_Optimizer_Wrapper> wrapper = std::make_unique<CGame_Optimizer_Wrapper>(stepping_ms, degree_of_opt);
@@ -258,6 +272,34 @@ extern "C" BOOL IfaceCalling scgms_game_get_optimize_status(scgms_game_optimizer
 		return FALSE;
 
 	*state = wrapper->Get_Progress(*progress_pct);
+
+	return TRUE;
+}
+
+extern "C" BOOL IfaceCalling scgms_game_cancel_optimize(scgms_game_optimizer_wrapper_t wrapper_raw, BOOL wait)
+{
+	CGame_Optimizer_Wrapper* wrapper = dynamic_cast<CGame_Optimizer_Wrapper*>(wrapper_raw);
+	if (!wrapper)
+		return FALSE;
+
+	if (!wrapper->Request_Cancel())
+		return FALSE;
+
+	if (wait == FALSE)
+		return TRUE;
+
+	NGame_Optimize_State state;
+	double dummy;
+
+	state = wrapper->Get_Progress(dummy);
+	while (state == NGame_Optimize_State::Running)
+	{
+		// this is a kind of an active wait, as it would be implementationally ineffective to implement a conditional variable
+		// the optimizer steals most of the computational resources anyway and is expected to terminate very soon
+		std::this_thread::yield();
+
+		state = wrapper->Get_Progress(dummy);
+	}
 
 	return TRUE;
 }

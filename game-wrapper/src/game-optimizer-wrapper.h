@@ -120,6 +120,9 @@ class CGame_Optimizer_Wrapper : public refcnt::CNotReferenced
 
 		// replays the optimized config; this assumes the optimalization process was successfull
 		bool Replay();
+
+		// cancels the optimalization at the closest cancel point
+		bool Request_Cancel();
 };
 
 #pragma warning( pop )
@@ -162,6 +165,22 @@ extern "C" scgms_game_optimizer_wrapper_t IfaceCalling scgms_game_optimize(uint1
  *		FALSE (zero) - failure
  */
 extern "C" BOOL IfaceCalling scgms_game_get_optimize_status(scgms_game_optimizer_wrapper_t wrapper, NGame_Optimize_State* state, double* progress_pct);
+
+/*
+ * scgms_game_cancel_optimize
+ * 
+ * Cancels the optimalization at the closest cancel point (e.g.; in between generations of a genetic algorithm, ...)
+ * Optionally waits for the optimalization to be cancelled before returning to caller.
+ * 
+ * Parameters:
+ *		wrapper - pointer to a game optimizer wrapper instance obtained from scgms_game_optimize call
+ *		wait - TRUE (non-zero) waits for optimalization to be terminated, FALSE (zero) requests the termination and returns immediatelly
+ * 
+ * Return values:
+ *		TRUE (non-zero) - success, termination has been requested (if wait is TRUE, the optimalization has also ended)
+ *		FALSE (zero) - no optimalization is running
+ */
+extern "C" BOOL IfaceCalling scgms_game_cancel_optimize(scgms_game_optimizer_wrapper_t wrapper, BOOL wait);
 
 /*
  * scgms_game_optimizer_terminate
