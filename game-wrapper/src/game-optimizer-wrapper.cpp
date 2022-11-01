@@ -48,9 +48,9 @@
 constexpr const GUID Default_Solver_Guid = { 0x1b21b62f, 0x7c6c, 0x4027,{ 0x89, 0xbc, 0x68, 0x7d, 0x8b, 0xd3, 0x2b, 0x3c } };	// {1B21B62F-7C6C-4027-89BC-687D8BD32B3C}
 
 // default generation count; is scaled by degree of optimalization given by outside code
-constexpr const size_t Default_Generation_Count = 1000;
+constexpr const size_t Default_Generation_Count = 10000;
 // default population size; may differ later, when we have more elaborate models
-constexpr const size_t Default_Population_Size = 20;
+constexpr const size_t Default_Population_Size = 86;
 
 #undef min
 #undef max
@@ -81,14 +81,10 @@ void CGame_Optimizer_Wrapper::Optimizer_Thread_Fnc()
 
 	std::wstring optParamName = Widen_String(mOpt_Filter_Parameters_Name);
 
-	const size_t filter_indices = mOpt_Filter_Idx;
-	const wchar_t* parameters_configuration_names = optParamName.c_str();
-
 	// optimize parameters, block this until it's complete
+	const wchar_t* param_to_optimize_name = optParamName.c_str();
 	rc = scgms::Optimize_Parameters(configuration,
-		&filter_indices,
-		&parameters_configuration_names,
-		1,
+		&mOpt_Filter_Idx, &param_to_optimize_name, 1,
 		nullptr,
 		nullptr,
 		Default_Solver_Guid,
