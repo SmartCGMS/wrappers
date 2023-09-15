@@ -27,20 +27,18 @@
  * distributed under these license terms is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *
- * a) For non-profit, academic research, this software is available under the
- *      GPLv3 license.
- * b) For any other use, especially commercial use, you must contact us and
- *       obtain specific terms and conditions for the use of the software.
- * c) When publishing work with results obtained using this software, you agree to cite the following paper:
- *       Tomas Koutny and Martin Ubl, "Parallel software architecture for the next generation of glucose
- *       monitoring", Procedia Computer Science, Volume 141C, pp. 279-286, 2018
+ * a) This file is available under the Apache License, Version 2.0.
+ * b) When publishing any derivative work or results obtained using this software, you agree to cite the following paper:
+ *    Tomas Koutny and Martin Ubl, "SmartCGMS as a Testbed for a Blood-Glucose Level Prediction and/or 
+ *    Control Challenge with (an FDA-Accepted) Diabetic Patient Simulation", Procedia Computer Science,  
+ *    Volume 177, pp. 354-362, 2020
  */
 
 #include "game-wrapper.h"
 #include "configs.h"
-#include "../../../common/rtl/referencedImpl.h"
-#include "../../../common/utils/string_utils.h"
-#include "../../../common/rtl/rattime.h"
+#include <scgms/rtl/referencedImpl.h>
+#include <scgms/utils/string_utils.h>
+#include <scgms/rtl/rattime.h>
 
 #include <iostream>
 
@@ -48,8 +46,7 @@
 #undef max
 
 CGame_Wrapper::CGame_Wrapper(uint32_t stepping_ms)
-	: mStep_Size(scgms::One_Second* (static_cast<double>(stepping_ms) / 1000.0)), mConfig_GUID{ Invalid_GUID }, mCurrent_Time{ 0.0 }, mParameters_GUID{ Invalid_GUID },
-	mSegment_Id{ 1 }
+	: mCurrent_Time{ 0.0 }, mStep_Size(scgms::One_Second* (static_cast<double>(stepping_ms) / 1000.0)), mSegment_Id{ 1 }, mConfig_GUID{ Invalid_GUID }, mParameters_GUID{ Invalid_GUID }
 {
 	//
 }
@@ -271,8 +268,6 @@ void CGame_Wrapper::Terminate(const BOOL wait_for_shutdown)
 	if (!mExecutor)
 		return;
 
-	bool rc = true;
-
 	std::unique_lock<std::mutex> lck(mExecution_Mtx);
 
 	if (!mIs_Replay)
@@ -286,7 +281,7 @@ void CGame_Wrapper::Terminate(const BOOL wait_for_shutdown)
 		evt_stop.segment_id() = mSegment_Id;
 		evt_stop.device_id() = game_wrapper_id;
 
-		rc = Succeeded(Inject_Event(std::move(evt_stop)));
+		Inject_Event(std::move(evt_stop));
 	}
 
 	scgms::UDevice_Event evt{ scgms::NDevice_Event_Code::Shut_Down };
@@ -295,7 +290,7 @@ void CGame_Wrapper::Terminate(const BOOL wait_for_shutdown)
 	evt.segment_id() = mSegment_Id;
 	evt.device_id() = game_wrapper_id;
 
-	rc &= Succeeded(Inject_Event(std::move(evt)));
+	Inject_Event(std::move(evt));
 
 	mExecutor->Terminate(wait_for_shutdown);
 
@@ -307,7 +302,7 @@ const CPatient_Sensor_State& CGame_Wrapper::Get_State() const
 	return mState;
 }
 
-extern "C" scgms_game_wrapper_t IfaceCalling scgms_game_create(uint16_t config_class, uint16_t config_id, uint32_t stepping_ms, const char* log_file_path)
+DLL_EXPORT scgms_game_wrapper_t IfaceCalling scgms_game_create(uint16_t config_class, uint16_t config_id, uint32_t stepping_ms, const char* log_file_path)
 {
 	std::unique_ptr<CGame_Wrapper> wrapper = std::make_unique<CGame_Wrapper>(stepping_ms);
 
@@ -325,7 +320,7 @@ extern "C" scgms_game_wrapper_t IfaceCalling scgms_game_create(uint16_t config_c
 	return res;
 }
 
-extern "C" scgms_game_wrapper_t IfaceCalling scgms_game_replay_create(const char* log_file_path)
+DLL_EXPORT scgms_game_wrapper_t IfaceCalling scgms_game_replay_create(const char* log_file_path)
 {
 	std::unique_ptr<CGame_Wrapper> wrapper = std::make_unique<CGame_Wrapper>(0);
 
@@ -340,7 +335,7 @@ extern "C" scgms_game_wrapper_t IfaceCalling scgms_game_replay_create(const char
 	return res;
 }
 
-extern "C" BOOL IfaceCalling scgms_game_step(scgms_game_wrapper_t wrapper_raw, GUID* input_signal_ids, double* input_signal_levels, double* input_signal_times, uint32_t input_signal_count, double* bg, double* ig, double* iob, double* cob)
+DLL_EXPORT BOOL IfaceCalling scgms_game_step(scgms_game_wrapper_t wrapper_raw, GUID* input_signal_ids, double* input_signal_levels, double* input_signal_times, uint32_t input_signal_count, double* bg, double* ig, double* iob, double* cob)
 {
 	CGame_Wrapper* wrapper = dynamic_cast<CGame_Wrapper*>(wrapper_raw);
 	if (!wrapper)
@@ -380,7 +375,7 @@ extern "C" BOOL IfaceCalling scgms_game_step(scgms_game_wrapper_t wrapper_raw, G
 	return TRUE;
 }
 
-extern "C" BOOL IfaceCalling scgms_game_replay_step(scgms_game_wrapper_t wrapper_raw, GUID * signal_id, double* level, double* time)
+DLL_EXPORT BOOL IfaceCalling scgms_game_replay_step(scgms_game_wrapper_t wrapper_raw, GUID * signal_id, double* level, double* time)
 {
 	CGame_Wrapper* wrapper = dynamic_cast<CGame_Wrapper*>(wrapper_raw);
 	if (!wrapper)
@@ -389,14 +384,14 @@ extern "C" BOOL IfaceCalling scgms_game_replay_step(scgms_game_wrapper_t wrapper
 	return wrapper->Replay_Step(*signal_id, *level, *time) ? TRUE : FALSE;
 }
 
-extern "C" BOOL IfaceCalling scgms_game_get_additional_state(scgms_game_wrapper_t wrapper, GUID * requested_signal_ids, double* output_signal_levels, size_t signal_count)
+DLL_EXPORT BOOL IfaceCalling scgms_game_get_additional_state(scgms_game_wrapper_t wrapper, GUID * requested_signal_ids, double* output_signal_levels, size_t signal_count)
 {
 	// TODO
 
 	return FALSE;
 }
 
-extern "C" BOOL IfaceCalling scgms_game_terminate(scgms_game_wrapper_t wrapper_raw)
+DLL_EXPORT BOOL IfaceCalling scgms_game_terminate(scgms_game_wrapper_t wrapper_raw)
 {
 	CGame_Wrapper* wrapper = dynamic_cast<CGame_Wrapper*>(wrapper_raw);
 	if (!wrapper)

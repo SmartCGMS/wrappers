@@ -11,5 +11,9 @@ EXPORTS
 	scgms_extract_wstr_container
 	scgms_convert_str_to_wstr
 
+	scgms_optimizer__create_progress_instance
+	scgms_optimizer__dump_progress
+	scgms_optimizer__optimize_parameters
+
 	scgms_drawing__new_data_available
 	scgms_drawing__draw

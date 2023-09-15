@@ -27,24 +27,22 @@
  * distributed under these license terms is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *
- * a) For non-profit, academic research, this software is available under the
- *      GPLv3 license.
- * b) For any other use, especially commercial use, you must contact us and
- *       obtain specific terms and conditions for the use of the software.
- * c) When publishing work with results obtained using this software, you agree to cite the following paper:
- *       Tomas Koutny and Martin Ubl, "Parallel software architecture for the next generation of glucose
- *       monitoring", Procedia Computer Science, Volume 141C, pp. 279-286, 2018
+ * a) This file is available under the Apache License, Version 2.0.
+ * b) When publishing any derivative work or results obtained using this software, you agree to cite the following paper:
+ *    Tomas Koutny and Martin Ubl, "SmartCGMS as a Testbed for a Blood-Glucose Level Prediction and/or 
+ *    Control Challenge with (an FDA-Accepted) Diabetic Patient Simulation", Procedia Computer Science,  
+ *    Volume 177, pp. 354-362, 2020
  */
 
 #pragma once
 
-#include "../../../common/iface/FilterIface.h"
-#include "../../../common/rtl/FilterLib.h"
-#include "../../../common/rtl/scgmsLib.h"
-#include "../../../common/iface/referencedIface.h"
-#include "../../../common/iface/SolverIface.h"
-#include "../../../common/rtl/UILib.h"
-#include "../../../common/rtl/SolverLib.h"
+#include <scgms/iface/FilterIface.h>
+#include <scgms/rtl/FilterLib.h>
+#include <scgms/rtl/scgmsLib.h>
+#include <scgms/iface/referencedIface.h>
+#include <scgms/iface/SolverIface.h>
+#include <scgms/rtl/UILib.h>
+#include <scgms/rtl/SolverLib.h>
 
 #include <cstdint>
 #include <cmath>

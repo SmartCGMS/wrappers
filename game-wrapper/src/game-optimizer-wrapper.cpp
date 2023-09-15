@@ -27,20 +27,18 @@
  * distributed under these license terms is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *
- * a) For non-profit, academic research, this software is available under the
- *      GPLv3 license.
- * b) For any other use, especially commercial use, you must contact us and
- *       obtain specific terms and conditions for the use of the software.
- * c) When publishing work with results obtained using this software, you agree to cite the following paper:
- *       Tomas Koutny and Martin Ubl, "Parallel software architecture for the next generation of glucose
- *       monitoring", Procedia Computer Science, Volume 141C, pp. 279-286, 2018
+ * a) This file is available under the Apache License, Version 2.0.
+ * b) When publishing any derivative work or results obtained using this software, you agree to cite the following paper:
+ *    Tomas Koutny and Martin Ubl, "SmartCGMS as a Testbed for a Blood-Glucose Level Prediction and/or 
+ *    Control Challenge with (an FDA-Accepted) Diabetic Patient Simulation", Procedia Computer Science,  
+ *    Volume 177, pp. 354-362, 2020
  */
 
 #include "game-optimizer-wrapper.h"
 #include "configs.h"
-#include "../../../common/rtl/referencedImpl.h"
-#include "../../../common/utils/string_utils.h"
-#include "../../../common/rtl/rattime.h"
+#include <scgms/rtl/referencedImpl.h>
+#include <scgms/utils/string_utils.h>
+#include <scgms/rtl/rattime.h>
 
 #include <iostream>
 
@@ -56,8 +54,7 @@ constexpr const size_t Default_Population_Size = 86;
 #undef max
 
 CGame_Optimizer_Wrapper::CGame_Optimizer_Wrapper(uint32_t stepping_ms, uint16_t degree_of_opt)
-	: mStep_Size(scgms::One_Second* (static_cast<double>(stepping_ms) / 1000.0)), mDegree_Of_Optimize(degree_of_opt), mOpt_State(NGame_Optimize_State::None),
-	mProgress{ solver::Null_Solver_Progress }
+	: mStep_Size(scgms::One_Second* (static_cast<double>(stepping_ms) / 1000.0)), mDegree_Of_Optimize(degree_of_opt), mProgress{ solver::Null_Solver_Progress }, mOpt_State(NGame_Optimize_State::None)
 {
 	//
 }
@@ -246,7 +243,7 @@ bool CGame_Optimizer_Wrapper::Request_Cancel()
 	return true;
 }
 
-extern "C" scgms_game_optimizer_wrapper_t IfaceCalling scgms_game_optimize(uint16_t config_class, uint16_t config_id, uint32_t stepping_ms, const char* log_file_input_path, const char* log_file_output_path, uint16_t degree_of_opt)
+DLL_EXPORT scgms_game_optimizer_wrapper_t IfaceCalling scgms_game_optimize(uint16_t config_class, uint16_t config_id, uint32_t stepping_ms, const char* log_file_input_path, const char* log_file_output_path, uint16_t degree_of_opt)
 {
 	std::unique_ptr<CGame_Optimizer_Wrapper> wrapper = std::make_unique<CGame_Optimizer_Wrapper>(stepping_ms, degree_of_opt);
 
@@ -261,7 +258,7 @@ extern "C" scgms_game_optimizer_wrapper_t IfaceCalling scgms_game_optimize(uint1
 	return res;
 }
 
-extern "C" BOOL IfaceCalling scgms_game_get_optimize_status(scgms_game_optimizer_wrapper_t wrapper_raw, NGame_Optimize_State * state, double* progress_pct)
+DLL_EXPORT BOOL IfaceCalling scgms_game_get_optimize_status(scgms_game_optimizer_wrapper_t wrapper_raw, NGame_Optimize_State * state, double* progress_pct)
 {
 	CGame_Optimizer_Wrapper* wrapper = dynamic_cast<CGame_Optimizer_Wrapper*>(wrapper_raw);
 	if (!wrapper)
@@ -272,7 +269,7 @@ extern "C" BOOL IfaceCalling scgms_game_get_optimize_status(scgms_game_optimizer
 	return TRUE;
 }
 
-extern "C" BOOL IfaceCalling scgms_game_cancel_optimize(scgms_game_optimizer_wrapper_t wrapper_raw, BOOL wait)
+DLL_EXPORT BOOL IfaceCalling scgms_game_cancel_optimize(scgms_game_optimizer_wrapper_t wrapper_raw, BOOL wait)
 {
 	CGame_Optimizer_Wrapper* wrapper = dynamic_cast<CGame_Optimizer_Wrapper*>(wrapper_raw);
 	if (!wrapper)
@@ -300,7 +297,7 @@ extern "C" BOOL IfaceCalling scgms_game_cancel_optimize(scgms_game_optimizer_wra
 	return TRUE;
 }
 
-extern "C" BOOL IfaceCalling scgms_game_optimizer_terminate(scgms_game_optimizer_wrapper_t wrapper_raw)
+DLL_EXPORT BOOL IfaceCalling scgms_game_optimizer_terminate(scgms_game_optimizer_wrapper_t wrapper_raw)
 {
 	CGame_Optimizer_Wrapper* wrapper = dynamic_cast<CGame_Optimizer_Wrapper*>(wrapper_raw);
 	if (!wrapper)
