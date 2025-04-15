@@ -47,18 +47,15 @@
  * IUnknown bridging functions
  */
 
-extern "C" HRESULT IfaceCalling scgms_query_interface(scgms::IFilter* refPtr, GUID* iid, void** iobj)
-{
+extern "C" HRESULT IfaceCalling scgms_query_interface(scgms::IFilter* refPtr, GUID* iid, void** iobj) {
 	return refPtr->QueryInterface(iid, iobj);
 }
 
-extern "C" HRESULT IfaceCalling scgms_add_ref(scgms::IFilter* refPtr)
-{
+extern "C" HRESULT IfaceCalling scgms_add_ref(scgms::IFilter* refPtr) {
 	return refPtr->AddRef();
 }
 
-extern "C" HRESULT IfaceCalling scgms_release(scgms::IFilter* refPtr)
-{
+extern "C" HRESULT IfaceCalling scgms_release(scgms::IFilter* refPtr) {
 	return refPtr->Release();
 }
 
@@ -67,38 +64,37 @@ extern "C" HRESULT IfaceCalling scgms_release(scgms::IFilter* refPtr)
  */
 
 template<class T>
-HRESULT create_character_container(refcnt::IVector_Container<T>** str)
-{
-	if (!str)
+HRESULT create_character_container(refcnt::IVector_Container<T>** str) {
+	if (!str) {
 		return E_FAIL;
+	}
 
 	*str = refcnt::Create_Container<T>(nullptr, nullptr);
 
 	return ((*str) != nullptr) ? S_OK : E_FAIL;
 }
 
-DLL_EXPORT HRESULT IfaceCalling scgms_create_str_container(refcnt::str_container **str)
-{
+DLL_EXPORT HRESULT IfaceCalling scgms_create_str_container(refcnt::str_container **str) {
 	return create_character_container<char>(str);
 }
 
-DLL_EXPORT HRESULT IfaceCalling scgms_create_wstr_container(refcnt::wstr_container **str)
-{
+DLL_EXPORT HRESULT IfaceCalling scgms_create_wstr_container(refcnt::wstr_container **str) {
 	return create_character_container<wchar_t>(str);
 }
 
 template<class T>
-HRESULT extract_character_container(refcnt::IVector_Container<T>* str, T** target)
-{
+HRESULT extract_character_container(refcnt::IVector_Container<T>* str, T** target) {
 	T *begin, *end;
-	if (str->get(&begin, &end) != S_OK)
+	if (str->get(&begin, &end) != S_OK) {
 		return E_FAIL;
+	}
 	size_t length = std::distance(begin, end);
 
 	T* tmpStr = new T[length + 1];
 
-	for (size_t i = 0; i < length; i++)
+	for (size_t i = 0; i < length; i++) {
 		tmpStr[i] = begin[i];
+	}
 	tmpStr[length] = 0;
 
 	*target = tmpStr;
@@ -106,24 +102,22 @@ HRESULT extract_character_container(refcnt::IVector_Container<T>* str, T** targe
 	return S_OK;
 }
 
-DLL_EXPORT HRESULT IfaceCalling scgms_extract_str_container(refcnt::str_container *str, char** target)
-{
+DLL_EXPORT HRESULT IfaceCalling scgms_extract_str_container(refcnt::str_container *str, char** target) {
 	return extract_character_container<char>(str, target);
 }
 
-DLL_EXPORT HRESULT IfaceCalling scgms_extract_wstr_container(refcnt::wstr_container *str, wchar_t** target)
-{
+DLL_EXPORT HRESULT IfaceCalling scgms_extract_wstr_container(refcnt::wstr_container *str, wchar_t** target) {
 	return extract_character_container<wchar_t>(str, target);
 }
 
-DLL_EXPORT HRESULT IfaceCalling scgms_convert_str_to_wstr(char* str, wchar_t** outstr)
-{
+DLL_EXPORT HRESULT IfaceCalling scgms_convert_str_to_wstr(char* str, wchar_t** outstr) {
 	std::wstring wstr = Widen_Char(str);
 
 	wchar_t* tmpStr = new wchar_t[wstr.size() + 1];
 	size_t i;
-	for (i = 0; i < wstr.size(); i++)
+	for (i = 0; i < wstr.size(); i++) {
 		tmpStr[i] = wstr[i];
+	}
 	tmpStr[i] = L'\0';
 
 	*outstr = tmpStr;
@@ -138,10 +132,10 @@ DLL_EXPORT HRESULT IfaceCalling scgms_convert_str_to_wstr(char* str, wchar_t** o
  // default solver: Halton MetaDE
 constexpr const GUID Default_Solver_Guid = { 0x1b21b62f, 0x7c6c, 0x4027,{ 0x89, 0xbc, 0x68, 0x7d, 0x8b, 0xd3, 0x2b, 0x3c } };	// {1B21B62F-7C6C-4027-89BC-687D8BD32B3C}
 
-DLL_EXPORT HRESULT IfaceCalling scgms_optimizer__create_progress_instance(solver::TSolver_Progress** progress)
-{
-	if (!progress)
+DLL_EXPORT HRESULT IfaceCalling scgms_optimizer__create_progress_instance(solver::TSolver_Progress** progress) {
+	if (!progress) {
 		return E_FAIL;
+	}
 
 	*progress = new solver::TSolver_Progress;
 	**progress = solver::Null_Solver_Progress;
@@ -149,22 +143,22 @@ DLL_EXPORT HRESULT IfaceCalling scgms_optimizer__create_progress_instance(solver
 	return S_OK;
 }
 
-DLL_EXPORT HRESULT IfaceCalling scgms_optimizer__dump_progress(solver::TSolver_Progress* progress, double* pctDone, double* bestMetric)
-{
-	if (!progress)
+DLL_EXPORT HRESULT IfaceCalling scgms_optimizer__dump_progress(solver::TSolver_Progress* progress, double* pctDone, double* bestMetric) {
+	if (!progress) {
 		return E_FAIL;
+	}
 
 	*bestMetric = Is_Any_NaN(progress->best_metric[0]) ? 0.0 : progress->best_metric[0];
 	*pctDone = 0;
 	
-	if (progress->max_progress > 0)
+	if (progress->max_progress > 0) {
 		*pctDone = static_cast<double>(progress->current_progress) / static_cast<double>(progress->max_progress);
+	}
 
 	return S_OK;
 }
 
-DLL_EXPORT HRESULT IfaceCalling scgms_optimizer__optimize_parameters(const char* config, uint32_t optimizeIdx, const char* optimizeParamName, uint32_t optGenCount, uint32_t optPopulationSize, solver::TSolver_Progress* progress, char** target)
-{
+DLL_EXPORT HRESULT IfaceCalling scgms_optimizer__optimize_parameters(const char* config, uint32_t optimizeIdx, const char* optimizeParamName, uint32_t optGenCount, uint32_t optPopulationSize, solver::TSolver_Progress* progress, char** target) {
 	scgms::SPersistent_Filter_Chain_Configuration configuration;
 
 	refcnt::Swstr_list errors;
@@ -173,11 +167,13 @@ DLL_EXPORT HRESULT IfaceCalling scgms_optimizer__optimize_parameters(const char*
 	std::wstring optParamName = Widen_String(optimizeParamName);
 
 	HRESULT rc = E_FAIL;
-	if (configuration)
+	if (configuration) {
 		rc = configuration->Load_From_Memory(configStr.c_str(), configStr.size(), errors.get());
+	}
 
-	if (!Succeeded(rc))
+	if (!Succeeded(rc)) {
 		return rc;
+	}
 
 	size_t filterIdx = static_cast<size_t>(optimizeIdx);
 	size_t populationSize = static_cast<size_t>(optPopulationSize);
@@ -200,8 +196,7 @@ DLL_EXPORT HRESULT IfaceCalling scgms_optimizer__optimize_parameters(const char*
 	);
 
 	// optimized parameters extracting
-	if (Succeeded(rc))
-	{
+	if (Succeeded(rc)) {
 		scgms::IFilter_Configuration_Link** begin, ** end;
 		configuration->get(&begin, &end);
 
@@ -210,14 +205,12 @@ DLL_EXPORT HRESULT IfaceCalling scgms_optimizer__optimize_parameters(const char*
 		scgms::IFilter_Parameter** pbegin, ** pend;
 		(*link)->get(&pbegin, &pend);
 
-		for (; pbegin != pend; pbegin++)
-		{
+		for (; pbegin != pend; pbegin++) {
 			scgms::SFilter_Parameter sparam = refcnt::make_shared_reference_ext<scgms::SFilter_Parameter, scgms::IFilter_Parameter>(*pbegin, true);
 
 			auto cname = sparam.configuration_name();
 
-			if (std::wstring_view{ cname } == optParamName)
-			{
+			if (std::wstring_view{ cname } == optParamName) {
 				HRESULT hr = S_OK;
 
 				std::wstring str = sparam.as_wstring(hr, true);
@@ -226,8 +219,9 @@ DLL_EXPORT HRESULT IfaceCalling scgms_optimizer__optimize_parameters(const char*
 				*target = new char[paramsStrRaw.size() + 1];
 				std::fill(*target, (*target) + paramsStrRaw.size() + 1, '\0');
 
-				for (size_t i = 0; i < paramsStrRaw.size(); i++)
+				for (size_t i = 0; i < paramsStrRaw.size(); i++) {
 					(*target)[i] = paramsStrRaw[i];
+				}
 
 				break;
 			}
@@ -241,17 +235,14 @@ DLL_EXPORT HRESULT IfaceCalling scgms_optimizer__optimize_parameters(const char*
  * Inspection callable bridge functions
  */
 
-DLL_EXPORT HRESULT IfaceCalling scgms_drawing__new_data_available(scgms::IDrawing_Filter_Inspection* ref)
-{
+DLL_EXPORT HRESULT IfaceCalling scgms_drawing__new_data_available(scgms::IDrawing_Filter_Inspection* ref) {
 	return ref->New_Data_Available();
 }
 
-DLL_EXPORT HRESULT IfaceCalling scgms_drawing__draw(scgms::IDrawing_Filter_Inspection* ref, uint16_t type, uint16_t diagnosis, refcnt::str_container *svg, refcnt::IVector_Container<uint64_t> *segmentIds, refcnt::IVector_Container<GUID> *signalIds)
-{
-	return ref->Draw((scgms::TDrawing_Image_Type)type, (scgms::TDiagnosis)diagnosis, svg, segmentIds, signalIds);
+DLL_EXPORT HRESULT IfaceCalling scgms_drawing__draw(scgms::IDrawing_Filter_Inspection* ref, uint16_t type, uint16_t diagnosis, refcnt::str_container *svg, refcnt::IVector_Container<uint64_t> *segmentIds, refcnt::IVector_Container<GUID> *signalIds) {
+	return ref->Draw(static_cast<scgms::TDrawing_Image_Type>(type), static_cast<scgms::NDiagnosis>(diagnosis), svg, segmentIds, signalIds);
 }
 
-DLL_EXPORT HRESULT IfaceCalling scgms_error_metric__promise(scgms::ISignal_Error_Inspection* ref, const uint64_t segment_id, bool all_segments, double* const metric_value, BOOL defer_to_dtor)
-{
+DLL_EXPORT HRESULT IfaceCalling scgms_error_metric__promise(scgms::ISignal_Error_Inspection* ref, const uint64_t segment_id, bool all_segments, double* const metric_value, BOOL defer_to_dtor) {
 	return ref->Promise_Metric(all_segments ? scgms::All_Segments_Id : segment_id, metric_value, defer_to_dtor);
 }

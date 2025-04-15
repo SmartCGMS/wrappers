@@ -51,8 +51,7 @@
 #include <thread>
 
 // enumeration of optimalization states
-enum class NGame_Optimize_State : size_t
-{
+enum class NGame_Optimize_State : size_t {
 	None		= 0,	// optimalization hasn't started yet; this should never be exported through library interface, as this state gets immediatelly replaced by either Running of Failed state
 	Running		= 1,	// in progress
 	Success		= 2,	// finished successfully
@@ -67,8 +66,7 @@ enum class NGame_Optimize_State : size_t
 /*
  * Game optimizer wrapper to split back-end logic (how to properly handle optimalization) from front-end
  */
-class CGame_Optimizer_Wrapper : public refcnt::CNotReferenced
-{
+class CGame_Optimizer_Wrapper : public refcnt::CNotReferenced {
 	private:
 		// default step size, should be the same as in the original game run
 		double mStep_Size = 0;

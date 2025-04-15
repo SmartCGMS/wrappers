@@ -54,24 +54,23 @@ constexpr const size_t Default_Population_Size = 86;
 #undef max
 
 CGame_Optimizer_Wrapper::CGame_Optimizer_Wrapper(uint32_t stepping_ms, uint16_t degree_of_opt)
-	: mStep_Size(scgms::One_Second* (static_cast<double>(stepping_ms) / 1000.0)), mDegree_Of_Optimize(degree_of_opt), mProgress{ solver::Null_Solver_Progress }, mOpt_State(NGame_Optimize_State::None)
-{
+	: mStep_Size(scgms::One_Second* (static_cast<double>(stepping_ms) / 1000.0)), mDegree_Of_Optimize(degree_of_opt), mProgress{ solver::Null_Solver_Progress }, mOpt_State(NGame_Optimize_State::None) {
 	//
 }
 
-void CGame_Optimizer_Wrapper::Optimizer_Thread_Fnc()
-{
+void CGame_Optimizer_Wrapper::Optimizer_Thread_Fnc() {
+
 	scgms::SPersistent_Filter_Chain_Configuration configuration;
 	refcnt::Swstr_list errors;
 
 	mOpt_State = NGame_Optimize_State::Running;
 
 	HRESULT rc = E_FAIL;
-	if (configuration)
+	if (configuration) {
 		rc = configuration->Load_From_Memory(mPrepared_Config.c_str(), mPrepared_Config.size(), errors.get());
+	}
 
-	if (!Succeeded(rc))
-	{
+	if (!Succeeded(rc)) {
 		mOpt_State = NGame_Optimize_State::Failed;
 		return;
 	}
@@ -94,8 +93,7 @@ void CGame_Optimizer_Wrapper::Optimizer_Thread_Fnc()
 	);
 
 	// optimized parameters extracting
-	if (Succeeded(rc))
-	{
+	if (Succeeded(rc)) {
 		scgms::IFilter_Configuration_Link** begin, ** end;
 		configuration->get(&begin, &end);
 
@@ -104,14 +102,12 @@ void CGame_Optimizer_Wrapper::Optimizer_Thread_Fnc()
 		scgms::IFilter_Parameter** pbegin, ** pend;
 		(*link)->get(&pbegin, &pend);
 
-		for (; pbegin != pend; pbegin++)
-		{
+		for (; pbegin != pend; pbegin++) {
 			scgms::SFilter_Parameter sparam = refcnt::make_shared_reference_ext<scgms::SFilter_Parameter, scgms::IFilter_Parameter>(*pbegin, true);
 
 			auto cname = sparam.configuration_name();
 
-			if (std::wstring_view{ cname } == optParamName)
-			{
+			if (std::wstring_view{ cname } == optParamName) {
 				HRESULT hr = S_OK;
 				mOptimized_Parameters = sparam.as_double_array(hr);
 				break;
@@ -119,8 +115,7 @@ void CGame_Optimizer_Wrapper::Optimizer_Thread_Fnc()
 		}
 	}
 
-	if (!Succeeded(rc))
-	{
+	if (!Succeeded(rc)) {
 		mOpt_State = NGame_Optimize_State::Failed;
 		return;
 	}
@@ -128,15 +123,14 @@ void CGame_Optimizer_Wrapper::Optimizer_Thread_Fnc()
 	mOpt_State = NGame_Optimize_State::Success;
 }
 
-bool CGame_Optimizer_Wrapper::Load_Configuration(uint16_t config_class, uint16_t config_id, const std::string& log_file_input_path, const std::string& log_file_output_path)
-{
+bool CGame_Optimizer_Wrapper::Load_Configuration(uint16_t config_class, uint16_t config_id, const std::string& log_file_input_path, const std::string& log_file_output_path) {
+
 	auto cfg_guid = Get_Config_Base_GUID(config_class, config_id);
 	auto params_guid = Get_Config_Parameters_GUID(config_class, config_id);
 
 	mPrepared_Config = Get_Config(cfg_guid, params_guid, mStep_Size, log_file_input_path, log_file_output_path, NConfig_Builder_Purpose::Optimalization,
 		[&](size_t idx, NConfig_Meta meta, const std::string& val) {
-			if (meta == NConfig_Meta::Param_Opt_Filter)
-			{
+			if (meta == NConfig_Meta::Param_Opt_Filter) {
 				mOpt_Filter_Idx = idx;
 				mOpt_Filter_Parameters_Name = val;
 			}
@@ -145,18 +139,19 @@ bool CGame_Optimizer_Wrapper::Load_Configuration(uint16_t config_class, uint16_t
 
 	mPrepared_Config_Replay = Get_Config(cfg_guid, params_guid, mStep_Size, log_file_input_path, log_file_output_path, NConfig_Builder_Purpose::Replay,
 		[&](size_t idx, NConfig_Meta meta, const std::string& val) {
-			if (meta == NConfig_Meta::Param_Opt_Filter)
+			if (meta == NConfig_Meta::Param_Opt_Filter) {
 				mOpt_Filter_Replay_Idx = idx;
+			}
 		}
 	);
 
 	return true;
 }
 
-bool CGame_Optimizer_Wrapper::Start()
-{
-	if (mOpt_Thread)
+bool CGame_Optimizer_Wrapper::Start() {
+	if (mOpt_Thread) {
 		return false;
+	}
 
 	mOpt_State = NGame_Optimize_State::Running;
 
@@ -170,27 +165,28 @@ bool CGame_Optimizer_Wrapper::Start()
 	return true;
 }
 
-NGame_Optimize_State CGame_Optimizer_Wrapper::Get_Progress(double& pct)
-{
-	if (mOpt_State == NGame_Optimize_State::Success)
+NGame_Optimize_State CGame_Optimizer_Wrapper::Get_Progress(double& pct) {
+	if (mOpt_State == NGame_Optimize_State::Success) {
 		pct = 1.0;
-	else
+	}
+	else {
 		pct = static_cast<double>(mProgress.current_progress) / static_cast<double>(mProgress.max_progress);
+	}
 
 	return mOpt_State;
 }
 
-bool CGame_Optimizer_Wrapper::Replay()
-{
+bool CGame_Optimizer_Wrapper::Replay() {
+
 	scgms::SPersistent_Filter_Chain_Configuration configuration;
 	refcnt::Swstr_list errors;
 
 	HRESULT rc = E_FAIL;
-	if (configuration)
+	if (configuration) {
 		rc = configuration->Load_From_Memory(mPrepared_Config_Replay.c_str(), mPrepared_Config_Replay.size(), errors.get());
+	}
 
-	if (!Succeeded(rc))
-	{
+	if (!Succeeded(rc)) {
 		mOpt_State = NGame_Optimize_State::Failed;
 		return false;
 	}
@@ -207,14 +203,12 @@ bool CGame_Optimizer_Wrapper::Replay()
 		scgms::IFilter_Parameter** pbegin, ** pend;
 		(*link)->get(&pbegin, &pend);
 
-		for (; pbegin != pend; pbegin++)
-		{
+		for (; pbegin != pend; pbegin++) {
 			scgms::SFilter_Parameter sparam = refcnt::make_shared_reference_ext<scgms::SFilter_Parameter, scgms::IFilter_Parameter>(*pbegin, true);
 
 			auto cname = sparam.configuration_name();
 
-			if (std::wstring_view{ cname } == optParamName)
-			{
+			if (std::wstring_view{ cname } == optParamName) {
 				sparam.set_double_array(mOptimized_Parameters);
 				break;
 			}
@@ -224,8 +218,9 @@ bool CGame_Optimizer_Wrapper::Replay()
 	// launch the replay
 	scgms::SFilter_Executor ex{ configuration, nullptr, nullptr, errors };
 
-	if (!ex)
+	if (!ex) {
 		return false;
+	}
 
 	// wait for shutdown; we just want to store results to log file
 	ex->Terminate(TRUE);
@@ -233,60 +228,62 @@ bool CGame_Optimizer_Wrapper::Replay()
 	return true;
 }
 
-bool CGame_Optimizer_Wrapper::Request_Cancel()
-{
-	if (mOpt_State == NGame_Optimize_State::None)
+bool CGame_Optimizer_Wrapper::Request_Cancel() {
+	if (mOpt_State == NGame_Optimize_State::None) {
 		return false;
+	}
 
 	mProgress.cancelled = TRUE;
 
 	return true;
 }
 
-DLL_EXPORT scgms_game_optimizer_wrapper_t IfaceCalling scgms_game_optimize(uint16_t config_class, uint16_t config_id, uint32_t stepping_ms, const char* log_file_input_path, const char* log_file_output_path, uint16_t degree_of_opt)
-{
+DLL_EXPORT scgms_game_optimizer_wrapper_t IfaceCalling scgms_game_optimize(uint16_t config_class, uint16_t config_id, uint32_t stepping_ms, const char* log_file_input_path, const char* log_file_output_path, uint16_t degree_of_opt) {
 	std::unique_ptr<CGame_Optimizer_Wrapper> wrapper = std::make_unique<CGame_Optimizer_Wrapper>(stepping_ms, degree_of_opt);
 
-	if (!wrapper->Load_Configuration(config_class, config_id, log_file_input_path, log_file_output_path))
+	if (!wrapper->Load_Configuration(config_class, config_id, log_file_input_path, log_file_output_path)) {
 		return nullptr;
+	}
 
-	if (!wrapper->Start())
+	if (!wrapper->Start()) {
 		return nullptr;
+	}
 
 	auto res = wrapper.get();
 	wrapper.release();
 	return res;
 }
 
-DLL_EXPORT BOOL IfaceCalling scgms_game_get_optimize_status(scgms_game_optimizer_wrapper_t wrapper_raw, NGame_Optimize_State * state, double* progress_pct)
-{
+DLL_EXPORT BOOL IfaceCalling scgms_game_get_optimize_status(scgms_game_optimizer_wrapper_t wrapper_raw, NGame_Optimize_State * state, double* progress_pct) {
 	CGame_Optimizer_Wrapper* wrapper = dynamic_cast<CGame_Optimizer_Wrapper*>(wrapper_raw);
-	if (!wrapper)
+	if (!wrapper) {
 		return FALSE;
+	}
 
 	*state = wrapper->Get_Progress(*progress_pct);
 
 	return TRUE;
 }
 
-DLL_EXPORT BOOL IfaceCalling scgms_game_cancel_optimize(scgms_game_optimizer_wrapper_t wrapper_raw, BOOL wait)
-{
+DLL_EXPORT BOOL IfaceCalling scgms_game_cancel_optimize(scgms_game_optimizer_wrapper_t wrapper_raw, BOOL wait) {
 	CGame_Optimizer_Wrapper* wrapper = dynamic_cast<CGame_Optimizer_Wrapper*>(wrapper_raw);
-	if (!wrapper)
+	if (!wrapper) {
 		return FALSE;
+	}
 
-	if (!wrapper->Request_Cancel())
+	if (!wrapper->Request_Cancel()) {
 		return FALSE;
+	}
 
-	if (wait == FALSE)
+	if (wait == FALSE) {
 		return TRUE;
+	}
 
 	NGame_Optimize_State state;
 	double dummy;
 
 	state = wrapper->Get_Progress(dummy);
-	while (state == NGame_Optimize_State::Running)
-	{
+	while (state == NGame_Optimize_State::Running) {
 		// this is a kind of an active wait, as it would be implementationally ineffective to implement a conditional variable
 		// the optimizer steals most of the computational resources anyway and is expected to terminate very soon
 		std::this_thread::yield();
@@ -297,11 +294,11 @@ DLL_EXPORT BOOL IfaceCalling scgms_game_cancel_optimize(scgms_game_optimizer_wra
 	return TRUE;
 }
 
-DLL_EXPORT BOOL IfaceCalling scgms_game_optimizer_terminate(scgms_game_optimizer_wrapper_t wrapper_raw)
-{
+DLL_EXPORT BOOL IfaceCalling scgms_game_optimizer_terminate(scgms_game_optimizer_wrapper_t wrapper_raw) {
 	CGame_Optimizer_Wrapper* wrapper = dynamic_cast<CGame_Optimizer_Wrapper*>(wrapper_raw);
-	if (!wrapper)
+	if (!wrapper) {
 		return FALSE;
+	}
 
 	return wrapper->Replay() ? TRUE : FALSE;
 }

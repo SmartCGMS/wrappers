@@ -51,8 +51,7 @@
 #include <condition_variable>
 
 // wrapper for sensor state (exported element-wise through interface)
-struct CPatient_Sensor_State
-{
+struct CPatient_Sensor_State {
 	double bg = std::numeric_limits<double>::quiet_NaN();
 	double ig = std::numeric_limits<double>::quiet_NaN();
 	double iob = std::numeric_limits<double>::quiet_NaN();
@@ -67,8 +66,7 @@ constexpr const GUID game_wrapper_id = { 0xb01f968d, 0x5fb9, 0x426c, { 0x9d, 0x4
 /*
  * Game wrapper to split back-end logic from front-end
  */
-class CGame_Wrapper : public virtual scgms::IFilter, public virtual refcnt::CNotReferenced
-{
+class CGame_Wrapper : public virtual scgms::IFilter, public virtual refcnt::CNotReferenced {
 	private:
 		// executor associated with this instance
 		scgms::SFilter_Executor mExecutor;

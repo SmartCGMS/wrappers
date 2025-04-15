@@ -45,8 +45,8 @@
 #include <string>
 #include <string_view>
 
-namespace patients
-{
+namespace patients {
+
 	static const GUID patient_s2013_1 = { 0x7e685b57, 0x8ef2, 0x4ce5, { 0x93, 0x8b, 0x7b, 0xdf, 0x2a, 0x88, 0x6c, 0x89 } }; // {7E685B57-8EF2-4CE5-938B-7BDF2A886C89}
 	const char* rsParams_s2013_1 = "0 0 0 20 20 0 0 0 0 0 0 0 20 10 30 10.2 0 1 0 0.2 0.05 0.4 0.005 0.005 100 0.01 0.005 0.001 0.01 0.05 0.001 0.05 0.0001 0.0001 0.002 0.05 1e-05 20 0.1 0.2 0.002 0.008 0.0001 0.0005 0.05 1 0.01 0.01 0.01 1 0 0 0 0 0 0 0 0 0 1 1 0 0 0 265.37 162.457 5.50433 0 100.25 100.25 3.20763 72.4342 141.154 265.37 102.32 138.56 100.25 0.08906 0.046122 0.003793 0.70391 0.21057 1.9152 0.054906 0.031319 253.52 0.087114 0.058138 0.027802 0.15446 0.225027 0.09001099999999999 0.23169 0.004637 0.00469 0.01208 0.9 0.0005 339 1 3.26673 0.0152 0.0766 0.0019 0.0078 1.23862 4.73141 0.05 0.05 0.05 10 0.95 0.12 0.4 0.3 0.08 0.02 0.05 30 0 15 15 500 500 500 500 500 50 300 200 300 200 500 500 500 250 300 200 0.8 1 0.5 2 2 10 2 0.5 500 0.6 0.2 0.2 0.9 1 1 1 0.05 0.02 0.5 3 0.01 1000 5 20 0.8 0.9 0.05 0.1 10 20 1 1 1 100 3 1 2 2 1 0.8 1 200 200 100 100";
 
@@ -60,8 +60,8 @@ namespace patients
 	};
 }
 
-namespace configs
-{
+namespace configs {
+
 	/**
 	 * When specifying config, make sure it outputs the following signals: BG, IG, IOB and COB.
 	 * Also keep in mind, that we want to specify model stepping and patient parameters
@@ -424,10 +424,8 @@ Log_File = {{LogFileTarget}}
 
 }
 
-bool Match_Replace_And_Advance(const char** itr, std::ostringstream& oss, const char* needle, const std::string& replaceWith)
-{
-	if (strncmp(*itr, needle, strlen(needle)) == 0)
-	{
+bool Match_Replace_And_Advance(const char** itr, std::ostringstream& oss, const char* needle, const std::string& replaceWith) {
+	if (strncmp(*itr, needle, strlen(needle)) == 0) {
 		oss << replaceWith;
 		*itr += strlen(needle);
 
@@ -437,10 +435,8 @@ bool Match_Replace_And_Advance(const char** itr, std::ostringstream& oss, const 
 	return false;
 }
 
-bool Match_And_Advance(const char** itr, const char* needle)
-{
-	if (strncmp(*itr, needle, strlen(needle)) == 0)
-	{
+bool Match_And_Advance(const char** itr, const char* needle) {
+	if (strncmp(*itr, needle, strlen(needle)) == 0) {
 		*itr += strlen(needle);
 
 		return true;
@@ -449,60 +445,59 @@ bool Match_And_Advance(const char** itr, const char* needle)
 	return false;
 }
 
-bool Match(const char** itr, const char* needle)
-{
+bool Match(const char** itr, const char* needle) {
 	return (strncmp(*itr, needle, strlen(needle)) == 0);
 }
 
-inline void Discard_Rest_Of_Line(const char** itr)
-{
+inline void Discard_Rest_Of_Line(const char** itr) {
 	// read until the end of line (or end of input)
-	while (**itr != '\0' && **itr != '\r' && **itr != '\n')
+	while (**itr != '\0' && **itr != '\r' && **itr != '\n') {
 		(*itr)++;
+	}
 
 	// read while there are just new lines
-	while (**itr == '\r' || **itr == '\n')
+	while (**itr == '\r' || **itr == '\n') {
 		(*itr)++;
+	}
 }
 
-std::string Read_Rest_Of_Line(const char** itr)
-{
+std::string Read_Rest_Of_Line(const char** itr) {
 	const char* begin = *itr;
 	// read until the end of line (or end of input)
-	while (**itr != '\0' && **itr != '\r' && **itr != '\n')
+	while (**itr != '\0' && **itr != '\r' && **itr != '\n') {
 		(*itr)++;
+	}
 
 	const char* end = *itr;
 
 	// read while there are just new lines
-	while (**itr == '\r' || **itr == '\n')
+	while (**itr == '\r' || **itr == '\n') {
 		(*itr)++;
+	}
 
 	return std::string{ begin, end };
 }
 
-std::map<std::string, std::string> Parse_Meta_String(const std::string& str)
-{
+std::map<std::string, std::string> Parse_Meta_String(const std::string& str) {
 	std::map<std::string, std::string> res;
 
 	std::istringstream iss(str);
 	std::string line;
-	while (std::getline(iss, line, configs::rsMeta_Delimiter))
-	{
+	while (std::getline(iss, line, configs::rsMeta_Delimiter)) {
 		auto delimpos = line.find(configs::rsMeta_Value_Delimiter);
-		if (delimpos == std::string::npos)
+		if (delimpos == std::string::npos) {
 			res[line] = "";
-		else
+		}
+		else {
 			res[line.substr(0, delimpos)] = line.substr(delimpos + 1);
+		}
 	}
 
 	return res;
 }
 
-const GUID& Get_Config_Base_GUID(uint32_t configClass, uint32_t configId)
-{
-	switch (configClass)
-	{
+const GUID& Get_Config_Base_GUID(uint32_t configClass, uint32_t configId) {
+	switch (configClass) {
 		case 1:		// Ikaros - S2013, easy
 		case 2:		// Ikaros - S2013, medium
 		case 3:		// Ikaros - S2013, hard
@@ -517,14 +512,11 @@ const GUID& Get_Config_Base_GUID(uint32_t configClass, uint32_t configId)
 	return Invalid_GUID;
 }
 
-const GUID& Get_Config_Parameters_GUID(uint32_t configClass, uint32_t configId)
-{
-	switch (configClass)
-	{
+const GUID& Get_Config_Parameters_GUID(uint32_t configClass, uint32_t configId) {
+	switch (configClass) {
 		case 1:		// Ikaros - S2013, easy
 		{
-			switch (configId)
-			{
+			switch (configId) {
 				case 1:
 					return patients::patient_s2013_1;
 			}
@@ -543,8 +535,7 @@ const GUID& Get_Config_Parameters_GUID(uint32_t configClass, uint32_t configId)
 
 		case 4:		// Ikaros - GCT, easy
 		{
-			switch (configId)
-			{
+			switch (configId) {
 				case 1:
 					return patients::patient_gct_1;
 			}
@@ -565,23 +556,20 @@ const GUID& Get_Config_Parameters_GUID(uint32_t configClass, uint32_t configId)
 	return Invalid_GUID;
 }
 
-static inline void Build_Filter_Idx_Str(size_t idx, std::string& target)
-{
+static inline void Build_Filter_Idx_Str(size_t idx, std::string& target) {
 	std::ostringstream oss;
 	oss << std::setw(3) << std::setfill('0') << idx;
 
 	target = oss.str();
 }
 
-enum class NDiscard_State
-{
+enum class NDiscard_State {
 	No_Discard,
 	Follow_Up,
 	Discard,
 };
 
-static std::string Build_Config_From_Template(const char* citr, const std::string& patientParams, const double stepping, const std::string& logFilenameIn, const std::string& logFilenameOut, NConfig_Builder_Purpose purpose, std::function<void(size_t, NConfig_Meta, const std::string&)> metaCallback = {})
-{
+static std::string Build_Config_From_Template(const char* citr, const std::string& patientParams, const double stepping, const std::string& logFilenameIn, const std::string& logFilenameOut, NConfig_Builder_Purpose purpose, std::function<void(size_t, NConfig_Meta, const std::string&)> metaCallback = {}) {
 	std::ostringstream oss;
 
 	const std::string patientStepping = Narrow_WString(Rat_Time_To_Default_WStr(stepping));
@@ -596,79 +584,83 @@ static std::string Build_Config_From_Template(const char* citr, const std::strin
 
 	auto metaStrToEnum = [](const std::string& str) {
 
-		if (str == configs::rsMeta_Opt_Filter)
+		if (str == configs::rsMeta_Opt_Filter) {
 			return NConfig_Meta::Param_Opt_Filter;
+		}
 
 		return NConfig_Meta::None;
 	};
 
-	while (*citr != '\0')
-	{
-		if (freshNewLine)
-		{
+	while (*citr != '\0') {
+		if (freshNewLine) {
 			// is a comment (may be meta comment); either way, remove the comment entirely
-			if (*citr == ';')
-			{
+			if (*citr == ';') {
 				// meta marker
-				if (Match_And_Advance(&citr, configs::rsMeta_Filter_Marker))
-				{
+				if (Match_And_Advance(&citr, configs::rsMeta_Filter_Marker)) {
+
 					auto metastr = Read_Rest_Of_Line(&citr);
 					auto metas = Parse_Meta_String(metastr);
 
-					if (metas.find(configs::rsMeta_All_Modes) != metas.end())
+					if (metas.find(configs::rsMeta_All_Modes) != metas.end()) {
 						discardState = NDiscard_State::No_Discard;
+					}
 					else if ((metas.find(configs::rsMeta_Gameplay) == metas.end() && purpose == NConfig_Builder_Purpose::Gameplay)
-						|| (metas.find(configs::rsMeta_Optimalization) == metas.end() && purpose == NConfig_Builder_Purpose::Optimalization))
+						|| (metas.find(configs::rsMeta_Optimalization) == metas.end() && purpose == NConfig_Builder_Purpose::Optimalization)) {
 						discardState = NDiscard_State::Follow_Up;
-					else
+					}
+					else {
 						discardState = NDiscard_State::No_Discard;
+					}
 
-					if (metaCallback)
-					{
-						for (auto& m : metas)
-						{
+					if (metaCallback) {
+						for (auto& m : metas) {
 							auto en = metaStrToEnum(m.first);
-							if (en != NConfig_Meta::None)
+							if (en != NConfig_Meta::None) {
 								metaCallback(curFilterIdx - 1, en, m.second);
+							}
 						}
 					}
 				}
-				else
+				else {
 					Discard_Rest_Of_Line(&citr);
+				}
 
 				continue;
 			}
-			else if (Match(&citr, configs::rsFilter_Tag_Start))
-			{
-				if (discardState == NDiscard_State::Follow_Up)
+			else if (Match(&citr, configs::rsFilter_Tag_Start)) {
+				if (discardState == NDiscard_State::Follow_Up) {
 					discardState = NDiscard_State::Discard;
-				else
+				}
+				else {
 					discardState = NDiscard_State::No_Discard;
+				}
 			}
-			else
+			else {
 				freshNewLine = false;
+			}
 		}
 
-		if (discardState == NDiscard_State::No_Discard)
-		{
+		if (discardState == NDiscard_State::No_Discard) {
 			// placeholder begin markers
-			if (*citr == '{' && *(citr + 1) == '{')
-			{
-				if (Match_Replace_And_Advance(&citr, oss, configs::rsPatient_Params_Placeholder, patientParams))
+			if (*citr == '{' && *(citr + 1) == '{') {
+				if (Match_Replace_And_Advance(&citr, oss, configs::rsPatient_Params_Placeholder, patientParams)) {
 					continue;
+				}
 
-				if (Match_Replace_And_Advance(&citr, oss, configs::rsLog_File_Target_Placeholder, logFilenameOut))
+				if (Match_Replace_And_Advance(&citr, oss, configs::rsLog_File_Target_Placeholder, logFilenameOut)) {
 					continue;
+				}
 
-				if (Match_Replace_And_Advance(&citr, oss, configs::rsLog_File_Source_Placeholder, logFilenameIn))
+				if (Match_Replace_And_Advance(&citr, oss, configs::rsLog_File_Source_Placeholder, logFilenameIn)) {
 					continue;
+				}
 
-				if (Match_Replace_And_Advance(&citr, oss, configs::rsPatient_Model_Stepping_Placeholder, patientStepping))
+				if (Match_Replace_And_Advance(&citr, oss, configs::rsPatient_Model_Stepping_Placeholder, patientStepping)) {
 					continue;
+				}
 
 				// replace filter idx placeholder with newly evaluated index
-				if (Match_Replace_And_Advance(&citr, oss, configs::rsFilter_Pos_Placeholder, curFilterIdxStr))
-				{
+				if (Match_Replace_And_Advance(&citr, oss, configs::rsFilter_Pos_Placeholder, curFilterIdxStr)) {
 					curFilterIdx++;
 					Build_Filter_Idx_Str(curFilterIdx, curFilterIdxStr);
 					continue;
@@ -678,10 +670,12 @@ static std::string Build_Config_From_Template(const char* citr, const std::strin
 			oss << *citr;
 		}
 
-		if (*citr == '\r' || *citr == '\n')
+		if (*citr == '\r' || *citr == '\n') {
 			freshNewLine = true;
-		else
+		}
+		else {
 			freshNewLine = false;
+		}
 
 		citr++;
 	}
@@ -689,20 +683,20 @@ static std::string Build_Config_From_Template(const char* citr, const std::strin
 	return oss.str();
 }
 
-std::string Get_Replay_Config(const std::string& logFilenameIn)
-{
+std::string Get_Replay_Config(const std::string& logFilenameIn) {
 	return Build_Config_From_Template(configs::rsConfig_Replay_Only, "", 0.0, logFilenameIn, logFilenameIn, NConfig_Builder_Purpose::Replay);
 }
 
-std::string Get_Config(const GUID& base_id, const GUID& parameters_id, double stepping, const std::string& logFilenameIn, const std::string& logFilenameOut, NConfig_Builder_Purpose purpose, std::function<void(size_t, NConfig_Meta, const std::string&)> metaCallback)
-{
+std::string Get_Config(const GUID& base_id, const GUID& parameters_id, double stepping, const std::string& logFilenameIn, const std::string& logFilenameOut, NConfig_Builder_Purpose purpose, std::function<void(size_t, NConfig_Meta, const std::string&)> metaCallback) {
 	auto conf_itr = configs::mapping.find(base_id);
-	if (conf_itr == configs::mapping.end())
+	if (conf_itr == configs::mapping.end()) {
 		return "";
+	}
 
 	auto param_itr = patients::mapping.find(parameters_id);
-	if (param_itr == patients::mapping.end())
+	if (param_itr == patients::mapping.end()) {
 		return "";
+	}
 
 	const std::string& patientParams = param_itr->second;
 

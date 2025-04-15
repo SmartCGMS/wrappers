@@ -46,18 +46,14 @@
 #undef max
 
 CGame_Wrapper::CGame_Wrapper(uint32_t stepping_ms)
-	: mCurrent_Time{ 0.0 }, mStep_Size(scgms::One_Second* (static_cast<double>(stepping_ms) / 1000.0)), mSegment_Id{ 1 }, mConfig_GUID{ Invalid_GUID }, mParameters_GUID{ Invalid_GUID }
-{
+	: mCurrent_Time{ 0.0 }, mStep_Size(scgms::One_Second* (static_cast<double>(stepping_ms) / 1000.0)), mSegment_Id{ 1 }, mConfig_GUID{ Invalid_GUID }, mParameters_GUID{ Invalid_GUID } {
 	//
 }
 
-CGame_Wrapper::~CGame_Wrapper()
-{
-
+CGame_Wrapper::~CGame_Wrapper() {
 }
 
-bool CGame_Wrapper::Load_Configuration(uint16_t config_class, uint16_t config_id, const std::string& log_file_path)
-{
+bool CGame_Wrapper::Load_Configuration(uint16_t config_class, uint16_t config_id, const std::string& log_file_path) {
 	mIs_Replay = false;
 
 	mConfig_GUID = Get_Config_Base_GUID(config_class, config_id);
@@ -68,8 +64,7 @@ bool CGame_Wrapper::Load_Configuration(uint16_t config_class, uint16_t config_id
 	return !mConfig_Contents.empty();
 }
 
-bool CGame_Wrapper::Load_Replay_Configuration(const std::string& log_file_path)
-{
+bool CGame_Wrapper::Load_Replay_Configuration(const std::string& log_file_path) {
 	mIs_Replay = true;
 
 	mConfig_Contents = Get_Replay_Config(log_file_path);
@@ -77,18 +72,16 @@ bool CGame_Wrapper::Load_Replay_Configuration(const std::string& log_file_path)
 	return !mConfig_Contents.empty();
 }
 
-bool CGame_Wrapper::Execute_Configuration()
-{
+bool CGame_Wrapper::Execute_Configuration() {
+
 	mErrors = refcnt::Swstr_list{};
 	scgms::SPersistent_Filter_Chain_Configuration configuration{};
-	if (configuration->Load_From_Memory(mConfig_Contents.c_str(), mConfig_Contents.length(), mErrors.get()) == S_OK)
-	{
+	if (configuration->Load_From_Memory(mConfig_Contents.c_str(), mConfig_Contents.length(), mErrors.get()) == S_OK) {
 		scgms::SFilter_Executor ex{ configuration, nullptr, nullptr, mErrors, this };
 
 		mErrors.for_each([](const std::wstring& err) {
 			std::wcerr << "Error: " << err << std::endl;
 		});
-
 
 		if (!ex) {
 			return false;
@@ -98,15 +91,17 @@ bool CGame_Wrapper::Execute_Configuration()
 		ex.get()->AddRef();
 	}
 
-	if (!mExecutor)
+	if (!mExecutor) {
 		return false;
+	}
 
 	mCurrent_Time = Unix_Time_To_Rat_Time(time(nullptr)); // at least preserve the initial timestamp (any further timestamps do not correspond to real-time)
 	mSegment_Id = 1;
 
 	// replays just gather all signals and terminate
-	if (mIs_Replay)
+	if (mIs_Replay) {
 		return true;
+	}
 
 	scgms::UDevice_Event evt{ scgms::NDevice_Event_Code::Time_Segment_Start };
 
@@ -117,40 +112,42 @@ bool CGame_Wrapper::Execute_Configuration()
 	evt.device_id() = game_wrapper_id;
 
 	auto rc = Succeeded(Inject_Event(std::move(evt)));
-	if (!rc)
+	if (!rc) {
 		return false;
+	}
 
 	return mExecutor.operator bool();
 }
 
-HRESULT IfaceCalling CGame_Wrapper::Configure(scgms::IFilter_Configuration* configuration, refcnt::wstr_list *error_description)
-{
+HRESULT IfaceCalling CGame_Wrapper::Configure(scgms::IFilter_Configuration* configuration, refcnt::wstr_list *error_description) {
 	return E_NOTIMPL;
 }
 
-HRESULT IfaceCalling CGame_Wrapper::Execute(scgms::IDevice_Event *event)
-{
+HRESULT IfaceCalling CGame_Wrapper::Execute(scgms::IDevice_Event *event) {
 	scgms::UDevice_Event evt{ event };
 
-	if (evt.event_code() == scgms::NDevice_Event_Code::Level)
-	{
-		if (evt.signal_id() == scgms::signal_BG)
+	if (evt.event_code() == scgms::NDevice_Event_Code::Level) {
+		if (evt.signal_id() == scgms::signal_BG) {
 			mState.bg = evt.level();
-		else if (evt.signal_id() == scgms::signal_IG)
+		}
+		else if (evt.signal_id() == scgms::signal_IG) {
 			mState.ig = evt.level();
-		else if (evt.signal_id() == scgms::signal_IOB)
+		}
+		else if (evt.signal_id() == scgms::signal_IOB) {
 			mState.iob = evt.level();
-		else if (evt.signal_id() == scgms::signal_COB)
+		}
+		else if (evt.signal_id() == scgms::signal_COB) {
 			mState.cob = evt.level();
+		}
 	}
 
 	// on replay, store levels to be picked up by another thread
-	if (mIs_Replay && evt.event_code() == scgms::NDevice_Event_Code::Level)
-	{
+	if (mIs_Replay && evt.event_code() == scgms::NDevice_Event_Code::Level) {
 		std::unique_lock<std::mutex> lck(mReplay_Step_Mtx);
 
-		while (mPending_Signal && mExecutor)
+		while (mPending_Signal && mExecutor) {
 			mReplay_Step_Cv.wait(lck);
+		}
 
 		mPending_Signal = true;
 		mPending_Replay_Time = evt.device_time();
@@ -160,8 +157,7 @@ HRESULT IfaceCalling CGame_Wrapper::Execute(scgms::IDevice_Event *event)
 		mReplay_Step_Cv.notify_one();
 	}
 
-	if (mIs_Replay && evt.event_code() == scgms::NDevice_Event_Code::Shut_Down)
-	{
+	if (mIs_Replay && evt.event_code() == scgms::NDevice_Event_Code::Shut_Down) {
 		std::unique_lock<std::mutex> lck(mReplay_Step_Mtx);
 
 		mReplay_Ended = true;
@@ -174,8 +170,7 @@ HRESULT IfaceCalling CGame_Wrapper::Execute(scgms::IDevice_Event *event)
 	return S_OK;
 }
 
-bool CGame_Wrapper::Inject_Configuration_Info()
-{
+bool CGame_Wrapper::Inject_Configuration_Info() {
 	std::unique_lock<std::mutex> lck(mExecution_Mtx);
 
 	std::wstring infoContents = L"Config_ID=" + GUID_To_WString(mConfig_GUID) + L",Parameters_ID=" + GUID_To_WString(mParameters_GUID);
@@ -189,23 +184,23 @@ bool CGame_Wrapper::Inject_Configuration_Info()
 	return Succeeded(Inject_Event(std::move(evt)));
 }
 
-HRESULT CGame_Wrapper::Inject_Event(scgms::UDevice_Event &&event)
-{
-	if (!event)
+HRESULT CGame_Wrapper::Inject_Event(scgms::UDevice_Event &&event) {
+	if (!event) {
 		return E_INVALIDARG;
+	}
 
 	scgms::IDevice_Event *raw_event = event.get();
 	event.release();
 	return mExecutor->Execute(raw_event);
 }
 
-bool CGame_Wrapper::Step(bool initial)
-{
+bool CGame_Wrapper::Step(bool initial) {
 	std::unique_lock<std::mutex> lck(mExecution_Mtx);
 
 	// do not advance simulation time on initial step
-	if (!initial)
+	if (!initial) {
 		mCurrent_Time += mStep_Size;
+	}
 
 	scgms::UDevice_Event evt{ scgms::NDevice_Event_Code::Level };
 
@@ -218,20 +213,22 @@ bool CGame_Wrapper::Step(bool initial)
 	return Succeeded(Inject_Event(std::move(evt)));
 }
 
-bool CGame_Wrapper::Replay_Step(GUID& id, double& level, double& time)
-{
-	if (!mIs_Replay || !mExecutor || mReplay_Ended)
+bool CGame_Wrapper::Replay_Step(GUID& id, double& level, double& time) {
+	if (!mIs_Replay || !mExecutor || mReplay_Ended) {
 		return false;
+	}
 
 	// lock scope
 	{
 		std::unique_lock<std::mutex> lck(mReplay_Step_Mtx);
 
-		while (!mPending_Signal && mExecutor && !mReplay_Ended)
+		while (!mPending_Signal && mExecutor && !mReplay_Ended) {
 			mReplay_Step_Cv.wait(lck);
+		}
 
-		if (!mPending_Signal)
+		if (!mPending_Signal) {
 			return false;
+		}
 
 		mPending_Signal = false;
 		time = mPending_Replay_Time;
@@ -244,8 +241,7 @@ bool CGame_Wrapper::Replay_Step(GUID& id, double& level, double& time)
 	return true;
 }
 
-bool CGame_Wrapper::Inject_Level(GUID* signal_id, double level, double relative_step_time)
-{
+bool CGame_Wrapper::Inject_Level(GUID* signal_id, double level, double relative_step_time) {
 	std::unique_lock<std::mutex> lck(mExecution_Mtx);
 
 	scgms::UDevice_Event evt{ scgms::NDevice_Event_Code::Level };
@@ -262,17 +258,15 @@ bool CGame_Wrapper::Inject_Level(GUID* signal_id, double level, double relative_
 	return Succeeded(Inject_Event(std::move(evt)));
 }
 
-void CGame_Wrapper::Terminate(const BOOL wait_for_shutdown)
-{
+void CGame_Wrapper::Terminate(const BOOL wait_for_shutdown) {
 	//Inject_Configuration_Info();
-	if (!mExecutor)
+	if (!mExecutor) {
 		return;
+	}
 
 	std::unique_lock<std::mutex> lck(mExecution_Mtx);
 
-	if (!mIs_Replay)
-	{
-
+	if (!mIs_Replay) {
 		scgms::UDevice_Event evt_stop{ scgms::NDevice_Event_Code::Time_Segment_Stop };
 
 		evt_stop.level() = 0.0;
@@ -297,20 +291,20 @@ void CGame_Wrapper::Terminate(const BOOL wait_for_shutdown)
 	mExecutor.reset();
 }
 
-const CPatient_Sensor_State& CGame_Wrapper::Get_State() const
-{
+const CPatient_Sensor_State& CGame_Wrapper::Get_State() const {
 	return mState;
 }
 
-DLL_EXPORT scgms_game_wrapper_t IfaceCalling scgms_game_create(uint16_t config_class, uint16_t config_id, uint32_t stepping_ms, const char* log_file_path)
-{
+DLL_EXPORT scgms_game_wrapper_t IfaceCalling scgms_game_create(uint16_t config_class, uint16_t config_id, uint32_t stepping_ms, const char* log_file_path) {
 	std::unique_ptr<CGame_Wrapper> wrapper = std::make_unique<CGame_Wrapper>(stepping_ms);
 
-	if (!wrapper->Load_Configuration(config_class, config_id, log_file_path))
+	if (!wrapper->Load_Configuration(config_class, config_id, log_file_path)) {
 		return nullptr;
+	}
 
-	if (!wrapper->Execute_Configuration())
+	if (!wrapper->Execute_Configuration()) {
 		return nullptr;
+	}
 
 	// make the first step, which initializes the model (and emits current state)
 	wrapper->Step(true);
@@ -320,26 +314,27 @@ DLL_EXPORT scgms_game_wrapper_t IfaceCalling scgms_game_create(uint16_t config_c
 	return res;
 }
 
-DLL_EXPORT scgms_game_wrapper_t IfaceCalling scgms_game_replay_create(const char* log_file_path)
-{
+DLL_EXPORT scgms_game_wrapper_t IfaceCalling scgms_game_replay_create(const char* log_file_path) {
 	std::unique_ptr<CGame_Wrapper> wrapper = std::make_unique<CGame_Wrapper>(0);
 
-	if (!wrapper->Load_Replay_Configuration(log_file_path))
+	if (!wrapper->Load_Replay_Configuration(log_file_path)) {
 		return nullptr;
+	}
 
-	if (!wrapper->Execute_Configuration())
+	if (!wrapper->Execute_Configuration()) {
 		return nullptr;
+	}
 
 	auto res = wrapper.get();
 	wrapper.release();
 	return res;
 }
 
-DLL_EXPORT BOOL IfaceCalling scgms_game_step(scgms_game_wrapper_t wrapper_raw, GUID* input_signal_ids, double* input_signal_levels, double* input_signal_times, uint32_t input_signal_count, double* bg, double* ig, double* iob, double* cob)
-{
+DLL_EXPORT BOOL IfaceCalling scgms_game_step(scgms_game_wrapper_t wrapper_raw, GUID* input_signal_ids, double* input_signal_levels, double* input_signal_times, uint32_t input_signal_count, double* bg, double* ig, double* iob, double* cob) {
 	CGame_Wrapper* wrapper = dynamic_cast<CGame_Wrapper*>(wrapper_raw);
-	if (!wrapper)
+	if (!wrapper) {
 		return FALSE;
+	}
 
 	// sort inputs by time, so the model gets stepped correctly
 	std::vector<size_t> input_indices(input_signal_count);
@@ -353,49 +348,53 @@ DLL_EXPORT BOOL IfaceCalling scgms_game_step(scgms_game_wrapper_t wrapper_raw, G
 		});
 	}
 
-	for (uint32_t i = 0; i < input_signal_count; i++)
-	{
-		if (!wrapper->Inject_Level(&input_signal_ids[input_indices[i]], input_signal_levels[input_indices[i]], input_signal_times[input_indices[i]]))
+	for (uint32_t i = 0; i < input_signal_count; i++) {
+		if (!wrapper->Inject_Level(&input_signal_ids[input_indices[i]], input_signal_levels[input_indices[i]], input_signal_times[input_indices[i]])) {
 			return FALSE;
+		}
 	}
 
-	if (!wrapper->Step())
+	if (!wrapper->Step()) {
 		return FALSE;
+	}
 
 	auto state = wrapper->Get_State();
-	if (bg)
+	if (bg) {
 		*bg = state.bg;
-	if (ig)
+	}
+	if (ig) {
 		*ig = state.ig;
-	if (iob)
+	}
+	if (iob) {
 		*iob = state.iob;
-	if (cob)
+	}
+	if (cob) {
 		*cob = state.cob;
+	}
 
 	return TRUE;
 }
 
-DLL_EXPORT BOOL IfaceCalling scgms_game_replay_step(scgms_game_wrapper_t wrapper_raw, GUID * signal_id, double* level, double* time)
-{
+DLL_EXPORT BOOL IfaceCalling scgms_game_replay_step(scgms_game_wrapper_t wrapper_raw, GUID * signal_id, double* level, double* time) {
 	CGame_Wrapper* wrapper = dynamic_cast<CGame_Wrapper*>(wrapper_raw);
-	if (!wrapper)
+	if (!wrapper) {
 		return FALSE;
+	}
 
 	return wrapper->Replay_Step(*signal_id, *level, *time) ? TRUE : FALSE;
 }
 
-DLL_EXPORT BOOL IfaceCalling scgms_game_get_additional_state(scgms_game_wrapper_t wrapper, GUID * requested_signal_ids, double* output_signal_levels, size_t signal_count)
-{
+DLL_EXPORT BOOL IfaceCalling scgms_game_get_additional_state(scgms_game_wrapper_t wrapper, GUID * requested_signal_ids, double* output_signal_levels, size_t signal_count) {
 	// TODO
 
 	return FALSE;
 }
 
-DLL_EXPORT BOOL IfaceCalling scgms_game_terminate(scgms_game_wrapper_t wrapper_raw)
-{
+DLL_EXPORT BOOL IfaceCalling scgms_game_terminate(scgms_game_wrapper_t wrapper_raw) {
 	CGame_Wrapper* wrapper = dynamic_cast<CGame_Wrapper*>(wrapper_raw);
-	if (!wrapper)
+	if (!wrapper) {
 		return FALSE;
+	}
 
 	wrapper->Terminate(TRUE);
 

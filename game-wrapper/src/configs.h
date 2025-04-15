@@ -41,15 +41,13 @@
 #include <functional>
 #include <scgms/rtl/guid.h>
 
-enum class NConfig_Builder_Purpose
-{
+enum class NConfig_Builder_Purpose {
 	Gameplay,
 	Optimalization,
 	Replay,
 };
 
-enum class NConfig_Meta
-{
+enum class NConfig_Meta {
 	None,
 	Param_Opt_Filter,
 };
